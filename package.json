@@ -10,7 +10,7 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node --test \"test/unit/*.test.js\"",
-    "test:e2e": "node test/e2e/run.js",
+    "test:e2e": "node test/e2e/smoke.mjs && node test/e2e/contraband.mjs && node test/e2e/stress10.mjs",
     "lint": "node --check server/index.js"
   },
   "dependencies": {
