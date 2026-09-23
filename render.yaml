@@ -1,0 +1,12 @@
+# One-click deploy on Render (free plan). https://render.com/deploy?repo=<this repo url>
+services:
+  - type: web
+    name: partyline
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production

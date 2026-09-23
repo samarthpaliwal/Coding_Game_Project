@@ -1,0 +1,15 @@
+# Koyeb (free tier: one always-on-ish web service with scale-to-zero).
+# Deploy button: https://app.koyeb.com/deploy?type=git&repository=github.com/samarthpaliwal/Coding_Game_Project&branch=main&name=partyline&ports=3000;http;/&builder=dockerfile
+name: partyline
+service:
+  type: web
+  ports:
+    - port: 3000
+      protocol: http
+  routes:
+    - path: /
+      port: 3000
+  health_checks:
+    - http:
+        port: 3000
+        path: /healthz

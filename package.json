@@ -1,0 +1,19 @@
+{
+  "name": "partyline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Room-code party game: everyone plays on their own phone, no logins, no installs.",
+  "type": "module",
+  "main": "server/index.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test \"test/unit/*.test.js\"",
+    "test:e2e": "node test/e2e/run.js",
+    "lint": "node --check server/index.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
