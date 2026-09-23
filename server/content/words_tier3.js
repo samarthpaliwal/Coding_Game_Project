@@ -1,0 +1,30 @@
+// Tier 3 contraband: two- or three-word phrases, bureaucratic or intimate fragments.
+// Very hard to disguise. Max 20 characters.
+export default [
+  "tax season", "emotional support", "gently used", "no refunds", "lightly toasted",
+  "my lawyer", "room temperature", "in this economy", "group project", "free trial",
+  "customer service", "as previously stated", "as a treat", "citation needed", "get well soon",
+  "business casual", "lightly salted", "family size", "mild inconvenience", "for legal reasons",
+  "assembly required", "batteries included", "terms and conditions", "see attached", "circle back",
+  "touch base", "moving forward", "please advise", "kind regards", "quick question",
+  "friendly reminder", "just checking in", "no pressure", "give or take", "as discussed",
+  "for your records", "return to sender", "signed and dated", "in triplicate", "while supplies last",
+  "adult supervision", "parental consent", "permission slip", "dress code", "pop quiz",
+  "extra credit", "late fee", "final notice", "past due", "convenience fee",
+  "fine print", "side effects", "ask your doctor", "may cause drowsiness", "keep refrigerated",
+  "this side up", "serving suggestion", "best before", "slightly damaged", "store credit",
+  "exact change", "no substitutions", "unexpected item", "bagging area", "lost and found",
+  "wet floor", "employees only", "out of order", "sold separately", "partly cloudy",
+  "wet paint", "until further notice", "in my defense", "to be fair", "hear me out",
+  "no offense", "out of spite", "on a technicality", "in theory", "handle with care",
+  "long story short", "in hindsight", "such is life", "duly noted", "family meeting",
+  "group chat", "left on read", "airplane mode", "middle seat", "software update",
+  "remind me later", "unsaved changes", "skip intro", "still loading", "please hold",
+  "true to size", "manage preferences", "cookie policy", "forgot password", "security question",
+  "mother's maiden name", "and another thing", "on that note", "may contain nuts", "report card",
+  "field trip", "bake sale", "science fair", "show and tell", "substitute teacher",
+  "fire drill", "road trip", "beware of dog", "family reunion", "plus one",
+  "save the date", "expense report", "out of office", "jet lag", "team building",
+  "trust fall", "welcome aboard", "fun fact", "action items", "no hard feelings",
+  "mandatory fun", "user error", "medium rare", "hand wash only", "on the side"
+];

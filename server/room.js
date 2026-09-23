@@ -3,6 +3,9 @@
 
 import { randomCode, randomToken, nextId, nowMs } from './util.js';
 import { getGame, gameCatalog } from './games/index.js';
+import { RoomError } from './errors.js';
+
+export { RoomError };
 
 export const LIMITS = {
   maxPlayers: 12,
@@ -58,7 +61,8 @@ export class Room {
     this.hostId = null;
     this.phase = 'lobby'; // lobby | playing | results
     this.game = null; // { id, module, state }
-    this.settings = { gameId: gameCatalog()[0]?.id || null, rounds: 3 };
+    this.settings = { gameId: gameCatalog()[0]?.id || null, rounds: 4 };
+    this.store = {}; // per-room scratch space for game modules (content cursors survive Play again)
     this.lastResults = null; // shown on the results screen
     this.timer = null; // the single phase timer for the running game
     this.hostTimer = null;
@@ -337,7 +341,9 @@ export class Room {
     this.game.module.action(this.game.state, this.ctx(), player.id, action);
     player.lastSeen = nowMs();
     this.touch();
-    this.sync();
+    // Silent actions (e.g. draft keystrokes) are relayed by the module itself and must not
+    // trigger a full-view broadcast to everyone.
+    if (!this.game?.module.silentActions?.has(action.type)) this.sync();
   }
 
   // ---------- timers ----------
@@ -366,6 +372,7 @@ export class Room {
     const room = this;
     return {
       code: room.code,
+      store: room.store,
       rng: Math.random,
       players: () => room.activePlayers(),
       connectedPlayers: () => room.connectedPlayers(),
@@ -470,13 +477,6 @@ export class Room {
       v.game.view = m.tvView ? m.tvView(this.game.state, ctx) : m.view(this.game.state, ctx, null);
     }
     return v;
-  }
-}
-
-export class RoomError extends Error {
-  constructor(code, message) {
-    super(message);
-    this.code = code;
   }
 }
 

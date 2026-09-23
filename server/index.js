@@ -6,7 +6,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { RoomManager, RoomError } from './room.js';
+import { RoomManager } from './room.js';
+import { RoomError } from './errors.js';
 import { cleanName, cleanText } from './util.js';
 import { gameCatalog } from './games/index.js';
 
@@ -246,7 +247,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const { server } = createApp();
   server.listen(PORT, HOST, () => {
     console.log(
-      `partyline listening on http://${HOST}:${PORT}  (games: ${
+      `contraband listening on http://${HOST}:${PORT}  (games: ${
         gameCatalog()
           .map((g) => g.id)
           .join(', ') || 'none yet'

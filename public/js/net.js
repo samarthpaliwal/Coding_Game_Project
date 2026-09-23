@@ -8,6 +8,7 @@ export class Net extends EventTarget {
     this.wanted = false;
     this.backoff = 400;
     this.offset = 0; // serverNow - localNow, refined by ping/pong
+    this.bestRtt = Infinity;
     this.status = 'idle';
     this.pingTimer = null;
     this.onOpenOnce = [];
@@ -37,7 +38,9 @@ export class Net extends EventTarget {
     ws.addEventListener('open', () => {
       this.backoff = 400;
       this.setStatus('online');
-      this.ping();
+      // Clock sync: a burst of 5 pings; keep the sample with the smallest round trip.
+      this.bestRtt = Infinity;
+      for (let i = 0; i < 5; i++) setTimeout(() => this.ping(), i * 150);
       clearInterval(this.pingTimer);
       this.pingTimer = setInterval(() => this.ping(), 20000);
       const fns = this.onOpenOnce.splice(0);
@@ -53,10 +56,15 @@ export class Net extends EventTarget {
       }
       if (msg.t === 'pong') {
         const rtt = Date.now() - msg.echo;
-        this.offset = msg.now - (msg.echo + rtt / 2);
+        const sample = msg.now - (msg.echo + rtt / 2);
+        // adopt a sample if it is at least as good as the best, or the estimate drifted a lot
+        if (rtt <= this.bestRtt * 1.5 || Math.abs(sample - this.offset) > 400) {
+          this.offset = sample;
+          this.bestRtt = Math.min(this.bestRtt, rtt);
+        }
         return;
       }
-      if (msg.t === 'view' && !this.offsetSeen) {
+      if (msg.t === 'view' && this.bestRtt === Infinity) {
         this.offset = msg.now - Date.now();
       }
       this.dispatchEvent(new CustomEvent(msg.t, { detail: msg }));

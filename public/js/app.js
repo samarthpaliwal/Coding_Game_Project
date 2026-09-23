@@ -4,9 +4,9 @@ import { Net } from './net.js';
 import { h, render, startTicker, toast, vibrate, copyText, confetti, unlockAudio, beep, setMuted, plural, qrSvg } from './ui.js';
 import { GAME_RENDERERS } from './games/index.js';
 
-const AVATARS = ['🦊', '🐸', '🐙', '🦄', '🐝', '🦖', '🐼', '🦩', '🐨', '🦑', '🐧', '🦔', '🐲', '🦜', '🐺', '🦋'];
-const SESSION_KEY = 'partyline.session';
-const PREFS_KEY = 'partyline.prefs';
+const AVATARS = ['🦊', '🐸', '🐙', '🦄', '🐝', '🦖', '🐼', '🦩', '🐨', '🦑', '🐧', '🦔', '🐲', '🦜', '🐺', '🦋', '🐢', '🦥', '🐳', '🦉', '🐷', '🦁', '🐮', '🦎'];
+const SESSION_KEY = 'contraband.session';
+const PREFS_KEY = 'contraband.prefs';
 
 const net = new Net();
 const root = document.getElementById('app');
@@ -90,12 +90,17 @@ net.addEventListener('error', (e) => {
   paint();
 });
 
+function clearKeep() {
+  for (const v of state.keep.values()) if (v && v.timer) clearInterval(v.timer);
+  state.keep.clear();
+}
+
 function leaveToHome(message) {
   state.session = null;
   save(SESSION_KEY, null);
   state.view = null;
   state.screen = 'home';
-  state.keep.clear();
+  clearKeep();
   history.replaceState(null, '', '/');
   if (message) toast(message, 'info', 3500);
   paint();
@@ -136,6 +141,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') net.connect();
 });
 window.addEventListener('online', () => net.connect());
+document.addEventListener('contraband:rerender', () => paint());
 
 if (state.session && (!state.urlCode || state.urlCode === state.session.code)) {
   state.screen = 'room';
@@ -170,6 +176,11 @@ function doPaint() {
   if (state.screen === 'home' || !v) {
     render(root, renderHome());
     return;
+  }
+  if (v.phase !== 'playing' && state.keep.size) {
+    clearKeep();
+    state.keepScope = '';
+    state.lastPhaseKey = '';
   }
   if (v.phase === 'lobby') {
     document.body.dataset.phase = 'lobby';
@@ -225,18 +236,21 @@ function renderHome() {
       else net.send({ t: 'join', code, name, avatar: p.avatar });
     });
     setTimeout(() => {
+      if (state.busy) toast('Waking up the server (free hosting takes ~30 s)…', 'info', 6000);
+    }, 3000);
+    setTimeout(() => {
       if (state.busy) {
         state.busy = false;
         toast('Still connecting… check your signal and try again.', 'error');
         paint();
       }
-    }, 8000);
+    }, 45000);
   };
   const hasCode = !!state.urlCode;
   return h(
     'main',
     { class: 'screen home' },
-    h('div', { class: 'hero' }, h('div', { class: 'logo' }, 'PARTY', h('span', null, 'LINE')), h('p', { class: 'tagline' }, 'One room code. Everyone on their own phone. Nothing to install.')),
+    h('div', { class: 'hero' }, h('div', { class: 'logo-wrap' }, h('div', { class: 'logo' }, 'CONTRA', h('span', null, 'BAND')), h('div', { class: 'stamp-classified', 'aria-hidden': 'true' }, 'CLASSIFIED')), h('p', { class: 'tagline' }, 'Sneak the word. Steal the laugh. Don\'t get caught.'), h('p', { class: 'tagline small' }, 'One room code. Everyone on their own phone. Nothing to install.')),
     h(
       'form',
       { class: 'card form', onSubmit: submit(hasCode ? 'join' : 'create') },
@@ -316,8 +330,9 @@ function renderLobby(v) {
     h(
       'section',
       { class: 'game-pick' },
-      h('h3', null, me.isHost ? 'Pick a game' : 'Game'),
-      h(
+      v.catalog.length > 1 ? h('h3', null, me.isHost ? 'Pick a game' : 'Game') : null,
+      v.catalog.length === 1 && GAME_RENDERERS[game?.id]?.renderHowTo ? GAME_RENDERERS[game.id].renderHowTo(v, api()) : null,
+      v.catalog.length === 1 ? null : h(
         'div',
         { class: 'game-cards' },
         (me.isHost ? v.catalog : v.catalog.filter((g) => g.id === game?.id)).map((g) =>
@@ -392,7 +407,7 @@ function renderPlaying(v) {
   if (phaseKey !== state.lastPhaseKey) {
     state.lastPhaseKey = phaseKey;
     if (state.keepScope !== g?.id) {
-      state.keep.clear();
+      clearKeep();
       state.keepScope = g?.id;
     }
     root.classList.remove('phase-enter');

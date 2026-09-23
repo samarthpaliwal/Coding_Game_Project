@@ -57,12 +57,18 @@ function watch(code) {
   net.whenOpen(() => net.send({ t: 'watch', code }));
 }
 
+document.addEventListener('contraband:rerender', () => paint());
 if (state.code) watch(state.code);
 paint();
 
 function paint() {
   const v = state.view;
   if (!v) return render(root, renderEnter());
+  if (v.phase !== 'playing' && state.keep.size) {
+    for (const k of state.keep.values()) if (k && k.timer) clearInterval(k.timer);
+    state.keep.clear();
+    state.keepScope = '';
+  }
   if (v.phase === 'lobby') return render(root, renderLobby(v));
   if (v.phase === 'results') return render(root, renderResults(v));
   return render(root, renderPlaying(v));
@@ -72,7 +78,7 @@ function renderEnter() {
   return h(
     'main',
     { class: 'screen tv-enter' },
-    h('div', { class: 'logo huge' }, 'PARTY', h('span', null, 'LINE')),
+    h('div', { class: 'logo huge' }, 'CONTRA', h('span', null, 'BAND')),
     h('p', { class: 'tagline' }, 'Type the room code from a phone to mirror it here.'),
     h(
       'form',
@@ -111,6 +117,7 @@ function renderPlaying(v) {
   const g = v.game;
   const renderer = g && GAME_RENDERERS[g.id];
   if (state.keepScope !== g?.id) {
+    for (const k of state.keep.values()) if (k && k.timer) clearInterval(k.timer);
     state.keep.clear();
     state.keepScope = g?.id;
   }
