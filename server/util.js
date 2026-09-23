@@ -1,27 +1,25 @@
 // Small helpers shared by the server and the game modules.
+import crypto from 'node:crypto';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O: they read like 1 and 0 on a TV
 
 export function randomCode(len = 4, taken = new Set()) {
   for (let attempt = 0; attempt < 10000; attempt++) {
     let s = '';
-    for (let i = 0; i < len; i++) s += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+    for (let i = 0; i < len; i++) s += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)];
     if (!taken.has(s)) return s;
   }
   throw new Error('code space exhausted');
 }
 
 export function randomToken(bytes = 18) {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let s = '';
-  for (let i = 0; i < bytes; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
-  return s;
+  return crypto.randomBytes(bytes).toString('base64url');
 }
 
 let idCounter = 0;
 export function nextId(prefix = 'p') {
   idCounter = (idCounter + 1) % 1e9;
-  return `${prefix}${idCounter.toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
+  return `${prefix}${idCounter.toString(36)}${crypto.randomInt(1296).toString(36)}`;
 }
 
 export function shuffle(arr, rng = Math.random) {

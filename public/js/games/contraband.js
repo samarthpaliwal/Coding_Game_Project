@@ -120,6 +120,7 @@ function avatarStrip(h, v, api, doneIds, { label } = {}) {
 }
 
 function reactionBar(h, api) {
+  if (api.me?.spectator) return null;
   return h(
     'div',
     { class: 'reaction-bar' },
@@ -216,6 +217,7 @@ function renderWrite(h, v, api) {
         you.tappedBy ? h('div', { class: 'tapped-banner' }, 'SOMEONE TAPPED YOUR LINE') : null,
       ),
       you.wiretap ? tapPanel(h, api, you, w) : null,
+      wiretapControls(h, v, api, you, w),
       avatarStrip(h, v, api, v.done, { label: `${v.done.length} of ${v.participants.length} in · waiting for the rest` }),
     ];
   }
@@ -239,29 +241,33 @@ function renderWrite(h, v, api) {
     h(
       'div',
       { class: 'write-box card' },
-      h('textarea', {
-        id: 'answer',
-        rows: '3',
-        maxlength: String(v.answerMax || 70),
-        placeholder: v.isFinal ? 'Answer, and hide your word in it…' : word ? `Answer… and sneak in “${word}”` : 'Your funniest answer…',
-        autocomplete: 'off',
-        autocapitalize: 'sentences',
-        enterkeyhint: 'done',
-        onInput: (e) => {
-          w.text = e.target.value;
-          w.dirty = true;
-          const pill = document.getElementById('pill');
-          if (pill && word) pill.classList.toggle('ok', w.text.toLowerCase().replace(/\s+/g, ' ').includes(word.toLowerCase()));
-          const counter = document.getElementById('counter');
-          if (counter) counter.textContent = `${w.text.length}/${v.answerMax || 70}`;
+      h(
+        'textarea',
+        {
+          id: 'answer',
+          rows: '3',
+          maxlength: String(v.answerMax || 70),
+          placeholder: v.isFinal ? 'Answer, and hide your word in it…' : word ? `Answer… and sneak in “${word}”` : 'Your funniest answer…',
+          autocomplete: 'off',
+          autocapitalize: 'sentences',
+          enterkeyhint: 'done',
+          onInput: (e) => {
+            w.text = e.target.value;
+            w.dirty = true;
+            const pill = document.getElementById('pill');
+            if (pill && word) pill.classList.toggle('ok', w.text.toLowerCase().replace(/\s+/g, ' ').includes(word.toLowerCase()));
+            const counter = document.getElementById('counter');
+            if (counter) counter.textContent = `${w.text.length}/${v.answerMax || 70}`;
+          },
+          onKeydown: (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              submit();
+            }
+          },
         },
-        onKeydown: (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            submit();
-          }
-        },
-      }),
+        w.text,
+      ),
       h(
         'div',
         { class: 'write-meta' },
@@ -358,11 +364,13 @@ function renderVote(h, v, api) {
   }
   const voted = you && you.vote !== null && you.vote !== undefined;
   const canVote = you && you.role !== 'spectator' && !voted;
+  const firstPaint = s.dealt !== v.round;
+  s.dealt = v.round;
   const cards = (v.answers || []).map((a, i) =>
     h(
       'button',
       {
-        class: `choice answer-card deal ${a.filler ? 'filler' : ''} ${a.mine ? 'mine' : ''} ${s.picked === a.key ? 'picked' : ''} ${voted && you.vote === a.key ? 'picked' : ''}`,
+        class: `choice answer-card ${firstPaint ? 'deal' : ''} ${a.filler ? 'filler' : ''} ${a.mine ? 'mine' : ''} ${s.picked === a.key ? 'picked' : ''} ${voted && you.vote === a.key ? 'picked' : ''}`,
         style: { animationDelay: `${i * 120}ms` },
         disabled: !canVote || a.filler || a.mine,
         onClick: () => {
@@ -499,7 +507,6 @@ function renderAccuse(h, v, api) {
           'button',
           {
             class: 'btn big primary',
-            disabled: s.picks.length === 0 && !s.nobody,
             onClick: () => {
               sendPicks();
               api.send({ type: 'lock' });
@@ -507,7 +514,7 @@ function renderAccuse(h, v, api) {
               api.vibrate([20, 30, 20]);
             },
           },
-          'Lock in',
+          s.picks.length === 0 && !s.nobody ? 'Lock in without accusing' : 'Lock in',
         )
       : null,
     reactionBar(h, api),
@@ -600,13 +607,19 @@ function ensureRevealTick(api, view) {
   if (t.key !== key) {
     t.key = key;
     t.fired.clear();
+    if (t.timer) clearInterval(t.timer);
+    t.timer = null;
   }
   if (t.timer) return t;
   t.timer = setInterval(() => {
-    const cards = document.querySelectorAll('[data-reveal-index]');
-    if (!cards.length) return;
     const v = api.view?.game?.view;
-    if (!v?.reveal) return;
+    if (!v || (v.phase !== 'reveal' && v.phase !== 'scoreboard')) {
+      clearInterval(t.timer);
+      t.timer = null;
+      return;
+    }
+    const cards = document.querySelectorAll('[data-reveal-index]');
+    if (!cards.length || !v.reveal) return;
     cards.forEach((el) => {
       const i = Number(el.dataset.revealIndex);
       const cls = revealClasses(v, api, i);
@@ -765,6 +778,9 @@ function renderReveal(h, v, api, { tv } = {}) {
         ? null
         : h('div', { class: 'count-banner' }, `${pl(r.count, 'smuggler')} this round`),
     h('div', { class: 'reveal-list' }, cards),
+    r.cleanRound && r.nobodyVoters?.length
+      ? h('div', { class: 'stamp-line big' }, `🕊️ Called it: ${r.nobodyVoters.map((id) => nameOf(api, id)).join(', ')} said nobody`)
+      : null,
     r.cleanStamp ? h('div', { class: 'stamp-line big' }, r.cleanStamp) : null,
     ...(r.fullBustStamps || []).map((s) => h('div', { class: 'stamp-line big gold' }, s)),
     tv ? null : verdictBanner(h, v, api),
@@ -868,7 +884,7 @@ function tvVote(h, v, api) {
   const elapsed = api.now() - started;
   const per = 2500;
   const answers = v.answers || [];
-  const idx = Math.floor(elapsed / per);
+  const idx = Math.max(0, Math.floor(elapsed / per));
   const rolling = idx < answers.length;
   if (!k.timer) {
     k.timer = setInterval(() => {

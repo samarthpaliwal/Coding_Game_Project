@@ -2,7 +2,7 @@
 // and the podium at the end. It never acts; phones do the acting.
 
 import { Net } from './net.js';
-import { h, render, startTicker, toast, confetti, qrSvg, plural } from './ui.js';
+import { h, render, startTicker, toast, confetti, qrSvg, plural, beep, unlockAudio } from './ui.js';
 import { GAME_RENDERERS } from './games/index.js';
 
 const net = new Net();
@@ -33,12 +33,17 @@ net.addEventListener('status', (e) => {
 });
 
 function api() {
-  const v = state.view;
   return {
-    view: v,
+    get view() {
+      return state.view;
+    },
     tv: true,
-    players: v?.players || [],
-    player: (id) => (v?.players || []).find((p) => p.id === id) || null,
+    get players() {
+      return state.view?.players || [];
+    },
+    player: (id) => (state.view?.players || []).find((p) => p.id === id) || null,
+    beep,
+    vibrate: () => {},
     now: () => net.now(),
     h,
     confetti,
@@ -58,6 +63,8 @@ function watch(code) {
 }
 
 document.addEventListener('contraband:rerender', () => paint());
+document.addEventListener('pointerdown', unlockAudio, { once: true });
+document.addEventListener('keydown', unlockAudio, { once: true });
 if (state.code) watch(state.code);
 paint();
 

@@ -167,12 +167,12 @@ The lobby feed also gets a note: "Word of the Night: moist (Priya)".
 ### 3.11 Worked example (6 players, round 2, range 1–3, actual 2)
 Prompt: "A rejected name for a new energy drink". Smugglers: Ben ("gravy"), Eve ("cousin").
 Votes: Ana 2, Ben 2, Cy 1, Eve 1 → Ana +200, Ben +200, Cy +100, Eve +100.
-Accusations (max 3 picks): Ana → Ben, Eve; Cy → Ben, Dee; Dee → Ana, Fox; Fox → Eve; Ben → Cy; Eve → Ana.
+Accusations (max 3 picks): Ana → Ben, Eve; Cy → Ben, Dee; Dee → Ana, Fox; Fox → Dee; Ben → Cy; Eve → Ana.
 - Ana: 2 correct, 0 wrong → 200 + Full bust 100 = **+300**, +1 Wiretap.
-- Cy: 1 correct, 1 wrong → 100 − 50 = **+50**. Dee: 0 correct, 2 wrong → **0**. Fox: **+100**. Ben, Eve: **0**.
+- Cy: 1 correct, 1 wrong → 100 − 50 = **+50**. Dee: 0 correct, 2 wrong → **0**. Fox: 0 correct, 1 wrong → **0**. Ben, Eve: **0**.
 - Ben: accusers = 5, threshold = ceil(0.4·5) = 2, accusedBy = 2 → **BUSTED**, +0 (keeps +200).
 - Eve: accusedBy = 1 → **CLEAN GETAWAY +250** (total +350 this round).
-Round deltas: Ana 500, Eve 350, Ben 200, Cy 150, Fox 100, Dee 0. Dee is last → Underdog, +1 Wiretap.
+Round deltas: Ana 500, Eve 350, Ben 200, Cy 150, Fox 0, Dee 0. Dee and Fox are last → Underdog, +1 Wiretap each.
 
 ### 3.12 Tuning constants (one place in `contraband.js`)
 ```

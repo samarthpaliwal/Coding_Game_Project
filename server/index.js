@@ -29,7 +29,32 @@ const MIME = {
   '.mp3': 'audio/mpeg',
 };
 
-const AVATARS = ['🦊', '🐸', '🐙', '🦄', '🐝', '🦖', '🐼', '🦩', '🐨', '🦑', '🐧', '🦔', '🐲', '🦜', '🐺', '🦋'];
+const AVATARS = [
+  '🦊',
+  '🐸',
+  '🐙',
+  '🦄',
+  '🐝',
+  '🦖',
+  '🐼',
+  '🦩',
+  '🐨',
+  '🦑',
+  '🐧',
+  '🦔',
+  '🐲',
+  '🦜',
+  '🐺',
+  '🦋',
+  '🐢',
+  '🦥',
+  '🐳',
+  '🦉',
+  '🐷',
+  '🦁',
+  '🐮',
+  '🦎',
+];
 
 function serveFile(res, filePath) {
   fs.readFile(filePath, (err, data) => {
@@ -50,8 +75,22 @@ function serveFile(res, filePath) {
 export function createApp() {
   const manager = new RoomManager();
   const server = http.createServer((req, res) => {
+    try {
+      handleHttp(req, res);
+    } catch (err) {
+      res.writeHead(err instanceof URIError ? 400 : 500, { 'Content-Type': 'text/plain' });
+      res.end(err instanceof URIError ? 'Bad request' : 'Server error');
+    }
+  });
+
+  function handleHttp(req, res) {
     const url = new URL(req.url, 'http://localhost');
     let p = decodeURIComponent(url.pathname);
+    if (p.includes('\0')) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Bad request');
+      return;
+    }
 
     if (p === '/healthz') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -76,7 +115,7 @@ export function createApp() {
       return;
     }
     serveFile(res, filePath);
-  });
+  }
 
   const wss = new WebSocketServer({ server, maxPayload: 64 * 1024 });
 
@@ -127,7 +166,16 @@ export function createApp() {
     return AVATARS.includes(input) ? input : AVATARS[Math.floor(Math.random() * AVATARS.length)];
   }
 
+  // A socket that already holds a seat (or a TV slot) gives it up before taking another.
+  function detach(ws) {
+    if (ws.__room) ws.__room.onDisconnect(ws);
+    ws.__room = null;
+    ws.__player = null;
+    ws.__tv = false;
+  }
+
   function handle(ws, msg) {
+    if (['create', 'join', 'resume', 'watch'].includes(msg.t)) detach(ws);
     switch (msg.t) {
       case 'ping':
         return send(ws, { t: 'pong', now: Date.now(), echo: msg.at });
@@ -186,9 +234,7 @@ export function createApp() {
         if (!room || !player) throw new RoomError('not_in_room', 'Join a room first.');
         const name = cleanName(msg.name);
         if (!name) throw new RoomError('bad_name', 'That name will not work.');
-        player.name = name;
-        if (AVATARS.includes(msg.avatar)) player.avatar = msg.avatar;
-        room.sync();
+        room.renamePlayer(player, name, AVATARS.includes(msg.avatar) ? msg.avatar : null);
         return;
       }
 
@@ -225,6 +271,9 @@ export function createApp() {
 }
 
 export { AVATARS };
+
+process.on('uncaughtException', (err) => console.error('uncaught exception (kept running)', err));
+process.on('unhandledRejection', (err) => console.error('unhandled rejection (kept running)', err));
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const { server } = createApp();

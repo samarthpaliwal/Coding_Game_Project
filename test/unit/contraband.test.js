@@ -99,7 +99,7 @@ test('worked example from the spec (6 players, round 2) reproduces exactly', () 
       ana: { picks: ['ben', 'eve'], nobody: false, locked: true },
       cy: { picks: ['ben', 'dee'], nobody: false, locked: true },
       dee: { picks: ['ana', 'fox'], nobody: false, locked: true },
-      fox: { picks: ['eve'], nobody: false, locked: true },
+      fox: { picks: ['dee'], nobody: false, locked: true },
       ben: { picks: ['cy'], nobody: false, locked: true },
       eve: { picks: ['ana'], nobody: false, locked: true },
     },
@@ -112,12 +112,11 @@ test('worked example from the spec (6 players, round 2) reproduces exactly', () 
   };
   state.cur = cur;
   const res = scoreRound(state, ctx);
-  // Eve is accused by Ana and Fox: 2 of 5 accusers >= ceil(0.4 * 5) = 2, so Eve is busted (keeps her vote points only).
-  assert.deepEqual(scores, { ana: 500, eve: 100, ben: 200, cy: 150, fox: 100, dee: 0 });
+  assert.deepEqual(scores, { ana: 500, eve: 350, ben: 200, cy: 150, fox: 0, dee: 0 });
   const card = (id) => res.cards.find((c) => c.id === id);
   assert.equal(card('ben').outcome, 'busted');
-  assert.equal(card('eve').outcome, 'busted');
-  assert.equal(card('eve').accusedBy.length, 2);
+  assert.equal(card('eve').outcome, 'getaway');
+  assert.equal(card('eve').accusedBy.length, 1);
   assert.deepEqual(res.fullBusters, ['ana']);
   assert.equal(state.players.ana.wiretaps, 2, 'full bust refunds a wiretap (cap 2)');
   assert.ok(card('ben').stamp.length > 0);

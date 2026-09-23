@@ -30,6 +30,18 @@ try {
   await shot(ana, 'smoke-lobby-host');
   await shot(ben, 'smoke-lobby-player');
   await shot(tv, 'smoke-tv-lobby');
+  // Two tabs on one seat: the older tab is told, and can take the seat back
+  const ben2 = await ben.context().newPage();
+  await ben2.goto(`${srv.base}/r/${code}`);
+  await ben2.waitForSelector('.lobby', { timeout: 8000 });
+  await ben.waitForSelector('main:has-text("open in another tab")', { timeout: 8000 });
+  await ben.click('button:has-text("Play here instead")');
+  await ben.waitForSelector('.lobby', { timeout: 8000 });
+  await ben2.waitForSelector('main:has-text("open in another tab")', { timeout: 8000 });
+  await ben2.close();
+  await sleep(300);
+  const count2 = await ana.$$eval('.player-list .player', (els) => els.length);
+  assert(count2 === 3, 'still 3 players after the tab dance, got ' + count2);
   // Home screen shot
   const fresh = await phone(browser, 'fresh');
   await fresh.goto(srv.base + '/');

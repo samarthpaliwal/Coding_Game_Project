@@ -395,7 +395,7 @@ body.tv .screen { max-width: 1400px; padding-inline: 4vw; }
 .accuse-row.filler { opacity: 0.5; }
 .accuse-head { display: flex; align-items: center; gap: 8px; }
 .accuse-answer { font-weight: 800; font-size: 1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.suspect { border: 2px solid var(--coral); background: transparent; color: var(--coral); border-radius: 999px; min-height: 40px; padding: 4px 12px; font-weight: 900; font-size: 0.85rem; cursor: pointer; letter-spacing: 0.04em; }
+.suspect { border: 2px solid var(--coral); background: transparent; color: var(--coral); border-radius: 999px; min-height: 48px; padding: 4px 12px; font-weight: 900; font-size: 0.85rem; cursor: pointer; letter-spacing: 0.04em; }
 .suspect.on { background: var(--coral); color: #1b0710; }
 .suspect:disabled { opacity: 0.6; cursor: default; }
 .heat { display: flex; align-items: center; gap: 8px; margin-top: 2px; }

@@ -44,6 +44,8 @@ const state = {
   busy: false,
   urlCode: codeFromUrl(),
   showQr: false,
+  codeDraft: '',
+  attempt: 0,
   keep: new Map(), // persistent DOM nodes for game renderers (canvases etc.)
   keepScope: '',
   lastPhaseKey: '',
@@ -86,7 +88,9 @@ net.addEventListener('joined', (e) => {
   state.session = { code: m.code, token: m.token, playerId: m.playerId };
   save(SESSION_KEY, state.session);
   state.busy = false;
+  state.attempt++;
   state.screen = 'room';
+  state.codeDraft = '';
   if (!location.pathname.startsWith(`/r/${m.code}`)) history.replaceState(null, '', `/r/${m.code}`);
   if (!m.resumed) beep('go');
 });
@@ -99,6 +103,15 @@ net.addEventListener('event', (e) => {
   const ev = e.detail.e;
   const game = state.view?.game && GAME_RENDERERS[state.view.game.id];
   game?.onEvent?.(ev, api());
+});
+net.addEventListener('closed', (e) => {
+  const { code } = e.detail;
+  if (code === 4000) {
+    state.screen = 'elsewhere';
+    paint();
+  } else if (code === 4002) {
+    leaveToHome('That room has ended.');
+  }
 });
 net.addEventListener('kicked', (e) => {
   leaveToHome(e.detail.reason === 'kicked' ? 'The host removed you from the room.' : 'You left the room.');
@@ -132,13 +145,21 @@ function leaveToHome(message) {
 }
 
 function api() {
-  const v = state.view;
+  // Getters, so long-lived closures (tickers, intervals) always see the latest view.
   return {
-    view: v,
-    me: v?.you,
-    players: v?.players || [],
-    player: (id) => (v?.players || []).find((p) => p.id === id) || null,
-    isHost: !!v?.you?.isHost,
+    get view() {
+      return state.view;
+    },
+    get me() {
+      return state.view?.you;
+    },
+    get players() {
+      return state.view?.players || [];
+    },
+    player: (id) => (state.view?.players || []).find((p) => p.id === id) || null,
+    get isHost() {
+      return !!state.view?.you?.isHost;
+    },
     send: (a) => net.send({ t: 'action', a }),
     host: (cmd, extra = {}) => net.send({ t: 'host', cmd, ...extra }),
     now: () => net.now(),
@@ -207,8 +228,16 @@ function paint() {
 
 function doPaint() {
   const v = state.view;
-  if (state.screen === 'home' || !v) {
+  if (state.screen === 'elsewhere') {
+    render(root, renderElsewhere());
+    return;
+  }
+  if (state.screen === 'home') {
     render(root, renderHome());
+    return;
+  }
+  if (!v) {
+    render(root, renderReconnecting());
     return;
   }
   if (v.phase !== 'playing' && state.keep.size) {
@@ -256,6 +285,57 @@ async function shareLink(code) {
   vibrate(15);
 }
 
+// ---------- RECONNECTING / ELSEWHERE ----------
+
+function renderReconnecting() {
+  return h(
+    'main',
+    { class: 'screen center home' },
+    h('div', { class: 'hero' }, h('div', { class: 'logo' }, 'CONTRA', h('span', null, 'BAND'))),
+    h(
+      'div',
+      { class: 'card done-card' },
+      h('span', { class: 'pulse' }),
+      h('h2', null, 'Finding your seat…'),
+      h(
+        'p',
+        { class: 'muted' },
+        net.status === 'online' ? 'Rejoining the room.' : 'Connecting to the server. Free hosting can take ~30 s to wake up.',
+      ),
+    ),
+    h('button', { class: 'btn ghost small', onClick: () => leaveToHome() }, 'Start over instead'),
+  );
+}
+
+function renderElsewhere() {
+  return h(
+    'main',
+    { class: 'screen center home' },
+    h('div', { class: 'hero' }, h('div', { class: 'logo' }, 'CONTRA', h('span', null, 'BAND'))),
+    h(
+      'div',
+      { class: 'card done-card' },
+      h('div', { class: 'check' }, '📱'),
+      h('h2', null, 'This seat is open in another tab'),
+      h('p', { class: 'muted' }, 'Your room is being played from another tab or device. Play there, or take it back here.'),
+    ),
+    h(
+      'button',
+      {
+        class: 'btn big primary',
+        onClick: () => {
+          state.screen = 'room';
+          state.view = null;
+          net.connect();
+          paint();
+        },
+      },
+      'Play here instead',
+    ),
+    h('button', { class: 'btn ghost small', onClick: () => leaveToHome() }, 'Leave the room'),
+  );
+}
+
 // ---------- HOME ----------
 
 function renderHome() {
@@ -268,29 +348,32 @@ function renderHome() {
     e.preventDefault();
     if (state.busy) return;
     const name = (document.getElementById('name')?.value || '').trim();
-    const code = (document.getElementById('code')?.value || '').trim().toUpperCase();
+    const code = (document.getElementById('code')?.value || state.codeDraft || '').trim().toUpperCase();
+    if (mode === 'auto') mode = code.length === 4 ? 'join' : 'create';
     if (!name) return toast('Pick a name first', 'error');
     if (mode === 'join' && code.length !== 4) return toast('Room codes are 4 letters', 'error');
     p.name = name;
     save(PREFS_KEY, p);
     state.busy = true;
+    const attempt = ++state.attempt;
     paint();
     net.whenOpen(() => {
+      if (attempt !== state.attempt) return;
       if (mode === 'create') net.send({ t: 'create', name, avatar: p.avatar });
       else net.send({ t: 'join', code, name, avatar: p.avatar });
     });
     setTimeout(() => {
-      if (state.busy) toast('Waking up the server (free hosting takes ~30 s)…', 'info', 6000);
+      if (state.busy && attempt === state.attempt) toast('Waking up the server (free hosting takes ~30 s)…', 'info', 6000);
     }, 3000);
     setTimeout(() => {
-      if (state.busy) {
+      if (state.busy && attempt === state.attempt) {
         state.busy = false;
         toast('Still connecting… check your signal and try again.', 'error');
         paint();
       }
     }, 45000);
   };
-  const hasCode = !!state.urlCode;
+  if (!state.codeDraft && state.urlCode) state.codeDraft = state.urlCode;
   return h(
     'main',
     { class: 'screen home' },
@@ -308,7 +391,7 @@ function renderHome() {
     ),
     h(
       'form',
-      { class: 'card form', onSubmit: submit(hasCode ? 'join' : 'create') },
+      { class: 'card form', onSubmit: submit('auto') },
       h(
         'label',
         { class: 'field' },
@@ -361,12 +444,14 @@ function renderHome() {
             autocomplete: 'off',
             spellcheck: 'false',
             placeholder: 'ABCD',
-            value: state.urlCode || '',
-            onInput: (e) =>
-              (e.target.value = e.target.value
+            value: state.codeDraft || '',
+            onInput: (e) => {
+              e.target.value = e.target.value
                 .toUpperCase()
                 .replace(/[^A-Z]/g, '')
-                .slice(0, 4)),
+                .slice(0, 4);
+              state.codeDraft = e.target.value;
+            },
           }),
         ),
         h('button', { type: 'button', class: 'btn primary', disabled: state.busy, onClick: submit('join') }, state.busy ? '…' : 'Join'),

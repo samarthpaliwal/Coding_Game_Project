@@ -9,7 +9,13 @@ const t0 = Date.now();
 const log = (...a) => console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s]`, ...a);
 
 async function smallPhone(name) {
-  const context = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, ignoreHTTPSErrors: true });
+  const context = await browser.newContext({
+    viewport: { width: 360, height: 740 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+    ignoreHTTPSErrors: true,
+  });
   const page = await context.newPage();
   page.__name = name;
   page.__errors = [];
@@ -19,7 +25,11 @@ async function smallPhone(name) {
 async function noHScroll(page, label) {
   const w = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, body: document.body.scrollWidth, vw: innerWidth }));
   assert(w.doc <= w.vw + 1 && w.body <= w.vw + 1, `${label}: horizontal overflow ${JSON.stringify(w)}`);
-  const small = await page.$$eval('button:not(.kick):not(.react):not(.tiny):not(.small):not(.avatar):not(.lineup-head)', (els) => els.filter((e) => e.offsetParent && e.getBoundingClientRect().height < 40).map((e) => e.className + ':' + e.textContent.trim().slice(0, 20)));
+  const small = await page.$$eval('button:not(.kick):not(.react):not(.tiny):not(.small):not(.avatar):not(.lineup-head)', (els) =>
+    els
+      .filter((e) => e.offsetParent && e.getBoundingClientRect().height < 40)
+      .map((e) => e.className + ':' + e.textContent.trim().slice(0, 20)),
+  );
   if (small.length) console.log(`  note ${label}: short controls`, small.slice(0, 5));
 }
 async function refreshAndCheck(page, selector, label) {
@@ -43,7 +53,14 @@ try {
   await shot(host, 's01-lobby-10');
   await host.click('button:has-text("Start Contraband")');
   await Promise.all(phones.map((p) => p.waitForSelector('.role-card', { timeout: 15000 })));
-  const roles = await Promise.all(phones.map((p) => p.evaluate(() => ({ smug: !!document.querySelector('.role-card.smuggler'), word: document.querySelector('.role-word')?.textContent || null }))));
+  const roles = await Promise.all(
+    phones.map((p) =>
+      p.evaluate(() => ({
+        smug: !!document.querySelector('.role-card.smuggler'),
+        word: document.querySelector('.role-word')?.textContent || null,
+      })),
+    ),
+  );
   const smugglers = roles.filter((r) => r.smug).length;
   log('smugglers in round 1 with 10 players:', smugglers);
   assert(smugglers === 3, 'k0 for 10 players is 3');

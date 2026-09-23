@@ -136,7 +136,7 @@ function nextPrompt(state, ctx, ids) {
     subjectId = pick(pool, ctx.rng);
     state.players[subjectId].subjectCount++;
     const name = ctx.player(subjectId)?.name || 'someone';
-    text = prompt.text.replace('{p}', name);
+    text = prompt.text.replace('{p}', () => name);
   }
   return { id: prompt.id, text, subjectId, callback: null };
 }
@@ -156,7 +156,7 @@ function finalePrompt(state, ctx) {
     const tpl = b.callbacks.next();
     return {
       id: -1,
-      text: tpl.replace('{answer}', `“${best.text}”`),
+      text: tpl.replace('{answer}', () => `“${best.text}”`),
       subjectId: null,
       callback: { round: best.round, authorId: best.authorId, answer: best.text },
     };
@@ -309,6 +309,11 @@ const contraband = {
   },
 
   playerReconnected(state, ctx, id) {
+    const me = state.players[id];
+    if (me) {
+      me.afk = false;
+      me.strikes = 0;
+    }
     if (state.phase === 'waiting') tryLeaveWaiting(state, ctx);
     if (state.cur && state.phase === 'write' && state.cur.wiretaps[id]) {
       // resume the tapped stream for a returning tapper
@@ -338,7 +343,19 @@ const contraband = {
   action(state, ctx, id, a) {
     const cur = state.cur;
     const me = state.players[id];
-    if (!cur || !me) throw new RoomError('not_now', 'Hang on, the next round is starting.');
+    if (!me) throw new RoomError('not_now', 'Hang on, the next round is starting.');
+    // Any message from a player proves they are present: it clears idle strikes even when they
+    // are not in this round, so an AFK player is dealt back in at the next round.
+    if (me.afk || me.strikes) {
+      me.afk = false;
+      me.strikes = 0;
+    }
+    me.acted = true;
+    if (state.phase === 'waiting') {
+      tryLeaveWaiting(state, ctx);
+      return;
+    }
+    if (!cur) throw new RoomError('not_now', 'Hang on, the next round is starting.');
     const isParticipant = cur.participants.includes(id) && !cur.left.has(id);
     const clearAfk = () => {
       me.strikes = 0;
@@ -411,7 +428,9 @@ const contraband = {
           acc.nobody = true;
         } else {
           const ok = accusable(cur, id);
-          const picks = [...new Set((Array.isArray(a.picks) ? a.picks : []).map(String))].filter((p) => ok.includes(p));
+          const picks = [...new Set((Array.isArray(a.picks) ? a.picks : []).filter((p) => typeof p === 'string'))].filter((p) =>
+            ok.includes(p),
+          );
           if (picks.length > cur.range.hi) throw new RoomError('bad_action', `You can accuse up to ${cur.range.hi}.`);
           acc.picks = picks;
           acc.nobody = false;
@@ -424,8 +443,8 @@ const contraband = {
         if (!isParticipant) throw new RoomError('not_now', 'You are not in this round.');
         if (cur.lineupLocked.has(id)) throw new RoomError('not_now', 'You already locked in.');
         const authorId = String(a.authorId || '');
-        const opts = cur.lineupOptions[authorId];
-        if (authorId === id || !opts) throw new RoomError('bad_action', 'Not in the lineup.');
+        const opts = Object.hasOwn(cur.lineupOptions, authorId) ? cur.lineupOptions[authorId] : null;
+        if (authorId === id || !Array.isArray(opts)) throw new RoomError('bad_action', 'Not in the lineup.');
         if (!opts.includes(a.word)) throw new RoomError('bad_action', 'Pick one of the four words.');
         (cur.guesses[id] ||= {})[authorId] = a.word;
         clearAfk();
@@ -527,7 +546,18 @@ function tryLeaveWaiting(state, ctx) {
 function beginRound(state, ctx, r) {
   dealInJoiners(state, ctx, r);
   for (const p of Object.values(state.players)) p.acted = false;
-  const ids = eligible(state, ctx);
+  let ids = eligible(state, ctx);
+  if (ids.length < 3) {
+    // Rather than park the room, give connected idle players a fresh start.
+    for (const p of ctx.players()) {
+      const me = state.players[p.id];
+      if (p.connected && me?.afk) {
+        me.afk = false;
+        me.strikes = 0;
+      }
+    }
+    ids = eligible(state, ctx);
+  }
   if (ids.length < 3) {
     state.phase = 'waiting';
     state.phaseId = (state.phaseId || 0) + 1;
@@ -630,25 +660,26 @@ function enterJudgement(state, ctx) {
 function buildLineupOptions(state, ctx) {
   const cur = state.cur;
   const currentWords = new Set(Object.values(cur.smugglers));
-  const earlier = [];
-  for (const r of state.rounds) for (const w of Object.values(r.smugglers || {})) if (!currentWords.has(w)) earlier.push(w);
-  const bankPool = shuffle(
-    (TIERS[cur.tier] || TIER2).filter((w) => !currentWords.has(w)),
-    ctx.rng,
-  );
-  let bankIdx = 0;
+  // Decoys must be words that could plausibly be someone's real word: never one already
+  // smuggled in this room (players can see those in Most Wanted and would rule them out).
+  const fresh = (tier) => (TIERS[tier] || TIER2).filter((w) => !currentWords.has(w) && !ctx.store.usedWords.has(w));
+  let pool = shuffle(fresh(cur.tier), ctx.rng);
+  for (const t of [1, 2, 3]) if (pool.length < 3 * cur.n && t !== cur.tier) pool = pool.concat(shuffle(fresh(t), ctx.rng));
+  if (pool.length < 3)
+    pool = pool.concat(
+      shuffle(
+        (TIERS[cur.tier] || TIER2).filter((w) => !currentWords.has(w)),
+        ctx.rng,
+      ),
+    );
+  let idx = 0;
   for (const id of votable(cur)) {
     const real = cur.smugglers[id];
     if (!real) continue;
     const decoys = new Set();
-    const fromEarlier = shuffle(earlier, ctx.rng);
-    for (const w of fromEarlier) {
-      if (decoys.size >= 2) break;
+    while (decoys.size < 3 && idx < pool.length) {
+      const w = pool[idx++];
       if (w !== real) decoys.add(w);
-    }
-    while (decoys.size < 3 && bankIdx < bankPool.length) {
-      const w = bankPool[bankIdx++];
-      if (w !== real && !decoys.has(w)) decoys.add(w);
     }
     cur.lineupOptions[id] = shuffle([real, ...decoys], ctx.rng);
   }
@@ -658,10 +689,10 @@ function enterReveal(state, ctx) {
   const cur = state.cur;
   cur.results = cur.isFinal ? scoreFinal(state, ctx) : scoreRound(state, ctx);
   cur.revealAt = ctx.now() + T.REVEAL_LEAD_MS;
-  const A = votable(cur).length;
+  const cardCount = cur.order.filter((id) => cur.answers[id]).length;
   enterPhase(state, ctx, {
     phase: 'reveal',
-    seconds: T.REVEAL_SECONDS(A, cur.isFinal),
+    seconds: T.REVEAL_SECONDS(cardCount, cur.isFinal),
     onEnd: () => (cur.isFinal ? finishGame(state, ctx) : enterScoreboard(state, ctx)),
   });
 }
@@ -679,6 +710,7 @@ function enterScoreboard(state, ctx) {
 function finishGame(state, ctx) {
   state.rounds.push(state.cur);
   const summary = computeAwards(state, ctx);
+  if (summary.wordOfTheNight) ctx.note?.(`Word of the Night: ${summary.wordOfTheNight.word} (${summary.wordOfTheNight.name})`);
   ctx.end(summary);
 }
 
@@ -964,25 +996,19 @@ function scoreboardRows(state, ctx, cur, underdog) {
     delta: sumDelta(cur.results.deltas[p.id]),
     isNew: !!state.players[p.id].isNew && state.players[p.id].joinedRound === cur.round,
   }));
-  const prevSorted = rows
-    .slice()
-    .sort((a, b) => b.score - a.score - (b.delta - a.delta) || (state.stats.votes[b.id] || 0) - (state.stats.votes[a.id] || 0));
-  // previous rank = rank by (score - delta)
-  const prevRank = {};
-  prevSorted
-    .slice()
-    .sort((a, b) => b.score - b.delta - (a.score - a.delta))
-    .forEach((r, i) => (prevRank[r.id] = i + 1));
   rows.sort(
     (a, b) =>
       b.score - a.score ||
       (state.stats.votes[b.id] || 0) - (state.stats.votes[a.id] || 0) ||
       (state.stats.getaways[b.id] || 0) - (state.stats.getaways[a.id] || 0),
   );
+  const last = state.lastRanks || null;
   rows.forEach((r, i) => {
     r.rank = i + 1;
-    r.prevRank = prevRank[r.id] || i + 1;
+    // No arrows on the first scoreboard: there was no previous ranking to move from.
+    r.prevRank = last && last[r.id] !== undefined ? last[r.id] : r.rank;
   });
+  state.lastRanks = Object.fromEntries(rows.map((r) => [r.id, r.rank]));
   for (const p of Object.values(state.players)) p.isNew = false;
   return { rows, mostWanted: state.stats.mostWanted.slice(), underdog, roundsLeft: state.totalRounds - cur.round };
 }

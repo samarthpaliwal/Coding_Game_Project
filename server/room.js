@@ -79,11 +79,7 @@ export class Room {
 
   addPlayer(ws, { name, avatar }) {
     if (this.players.size >= LIMITS.maxPlayers) throw new RoomError('room_full', 'This room is full (12 players max).');
-    const taken = new Set([...this.players.values()].map((p) => p.name.toLowerCase()));
-    let finalName = name;
-    let n = 2;
-    while (taken.has(finalName.toLowerCase())) finalName = `${name.slice(0, 13)} ${n++}`;
-    const player = new Player({ name: finalName, avatar });
+    const player = new Player({ name: this.uniqueName(name), avatar });
     this.players.set(player.id, player);
     this.attach(player, ws);
     if (!this.hostId) this.hostId = player.id;
@@ -95,6 +91,21 @@ export class Room {
     this.touch();
     this.sync();
     return player;
+  }
+
+  uniqueName(name, exceptId = null) {
+    const taken = new Set([...this.players.values()].filter((p) => p.id !== exceptId).map((p) => p.name.toLowerCase()));
+    let finalName = name;
+    let n = 2;
+    while (taken.has(finalName.toLowerCase())) finalName = `${name.slice(0, 13)} ${n++}`;
+    return finalName;
+  }
+
+  renamePlayer(player, name, avatar) {
+    player.name = this.uniqueName(name, player.id);
+    if (avatar) player.avatar = avatar;
+    this.touch();
+    this.sync();
   }
 
   attach(player, ws) {
@@ -248,14 +259,16 @@ export class Room {
     if (this.phase === 'playing') throw new RoomError('busy', 'A game is already running.');
     const module = getGame(this.settings.gameId);
     if (!module) throw new RoomError('bad_game', 'Pick a game first.');
-    // everyone present becomes a player; disconnected lobby ghosts are dropped
+    // Everyone present becomes a player. Ghosts gone for a while are dropped; a phone that
+    // locked ten seconds ago keeps its seat and score and simply gets fillers until it is back.
     for (const p of [...this.players.values()]) {
-      if (!p.connected) this.players.delete(p.id);
+      if (!p.connected && nowMs() - p.disconnectedAt > LIMITS.lobbyGhostMs) this.players.delete(p.id);
       else p.spectator = false;
     }
     if (!this.players.has(this.hostId)) this.migrateHost();
     const players = this.activePlayers();
-    if (players.length < module.minPlayers) {
+    const present = players.filter((p) => p.connected);
+    if (present.length < module.minPlayers) {
       throw new RoomError('not_enough', `${module.name} needs at least ${module.minPlayers} players.`);
     }
     if (players.length > module.maxPlayers) {
@@ -391,6 +404,7 @@ export class Room {
       sync: () => room.sync(),
       emit: (event, ids) => room.emit(event, ids),
       end: (results) => room.endGame(results),
+      note: (text) => room.note(text),
       now: nowMs,
     };
   }

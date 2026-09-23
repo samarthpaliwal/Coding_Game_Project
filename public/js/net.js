@@ -69,9 +69,15 @@ export class Net extends EventTarget {
       }
       this.dispatchEvent(new CustomEvent(msg.t, { detail: msg }));
     });
-    ws.addEventListener('close', () => {
+    ws.addEventListener('close', (ev) => {
       clearInterval(this.pingTimer);
       this.setStatus('offline');
+      // 4000 replaced by another tab, 4001 kicked/left, 4002 room closed: the server meant it.
+      if (ev.code >= 4000 && ev.code < 4100) {
+        this.wanted = false;
+        this.dispatchEvent(new CustomEvent('closed', { detail: { code: ev.code, reason: ev.reason } }));
+        return;
+      }
       if (this.wanted) {
         setTimeout(() => this.connect(), this.backoff);
         this.backoff = Math.min(this.backoff * 1.8, 6000);
