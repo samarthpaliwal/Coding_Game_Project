@@ -9,7 +9,7 @@ const net = new Net();
 const root = document.getElementById('app');
 const state = { view: null, code: new URLSearchParams(location.search).get('room')?.toUpperCase() || '', keep: new Map(), keepScope: '' };
 
-startTicker(() => net.now());
+startTicker(() => net.now(), { quiet: true });
 
 net.addEventListener('view', (e) => {
   state.view = e.detail;
@@ -90,9 +90,17 @@ function renderEnter() {
           if (code.length === 4) watch(code);
         },
       },
-      h('input', { id: 'tvcode', class: 'tv-input', maxlength: '4', autocapitalize: 'characters', placeholder: 'ABCD', autofocus: true, onInput: (e) => (e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '')) }),
-      h('button', { class: 'btn big primary' }, 'Watch')
-    )
+      h('input', {
+        id: 'tvcode',
+        class: 'tv-input',
+        maxlength: '4',
+        autocapitalize: 'characters',
+        placeholder: 'ABCD',
+        autofocus: true,
+        onInput: (e) => (e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '')),
+      }),
+      h('button', { class: 'btn big primary' }, 'Watch'),
+    ),
   );
 }
 
@@ -102,14 +110,40 @@ function renderLobby(v) {
   return h(
     'main',
     { class: 'screen tv-lobby' },
-    h('div', { class: 'tv-join' }, h('div', { class: 'tv-hint' }, 'Join at ', h('b', null, location.host)), h('div', { class: 'invite-code giant' }, ...v.code.split('').map((ch) => h('span', null, ch))), h('div', { class: 'qr big', html: qrSvg(url, 8) })),
+    h(
+      'div',
+      { class: 'tv-join' },
+      h('div', { class: 'tv-hint' }, 'Join at ', h('b', null, location.host)),
+      h('div', { class: 'invite-code giant' }, ...v.code.split('').map((ch) => h('span', null, ch))),
+      h('div', { class: 'qr big', html: qrSvg(url, 8) }),
+    ),
     h(
       'div',
       { class: 'tv-side' },
       h('h2', null, plural(v.players.length, 'player')),
-      h('ul', { class: 'player-list tv' }, v.players.map((p) => h('li', { class: `player ${p.connected ? '' : 'away'}` }, h('span', { class: 'p-avatar' }, p.avatar), h('span', { class: 'p-name' }, p.name, p.id === v.hostId ? ' 👑' : ''), v.gamesPlayed ? h('span', { class: 'p-score' }, p.score) : null))),
-      game ? h('div', { class: 'tv-next' }, h('div', { class: 'muted' }, 'Up next'), h('div', { class: 'g-name' }, game.name), h('div', { class: 'g-tag' }, game.tagline)) : null
-    )
+      h(
+        'ul',
+        { class: 'player-list tv' },
+        v.players.map((p) =>
+          h(
+            'li',
+            { class: `player ${p.connected ? '' : 'away'}` },
+            h('span', { class: 'p-avatar' }, p.avatar),
+            h('span', { class: 'p-name' }, p.name, p.id === v.hostId ? ' 👑' : ''),
+            v.gamesPlayed ? h('span', { class: 'p-score' }, p.score) : null,
+          ),
+        ),
+      ),
+      game
+        ? h(
+            'div',
+            { class: 'tv-next' },
+            h('div', { class: 'muted' }, 'Up next'),
+            h('div', { class: 'g-name' }, game.name),
+            h('div', { class: 'g-tag' }, game.tagline),
+          )
+        : null,
+    ),
   );
 }
 
@@ -121,9 +155,26 @@ function renderPlaying(v) {
     state.keep.clear();
     state.keepScope = g?.id;
   }
-  const timer = g.view?.endsAt ? h('div', { class: 'timer tv-timer', dataset: { ends: String(g.view.endsAt), total: String(g.view.duration || 0) } }, '') : null;
-  const body = renderer?.tv ? renderer.tv(v, api()) : renderer?.render ? renderer.render(v, api()) : h('pre', null, JSON.stringify(g?.view, null, 2));
-  return h('main', { class: `screen tv-playing game-${g?.id}` }, h('header', { class: 'topbar tv' }, h('div', { class: 'code-pill' }, h('span', { class: 'code-label' }, 'ROOM'), h('span', { class: 'code' }, v.code)), h('div', { class: 'topbar-center' }, timer), h('div', { class: 'muted' }, g?.name)), h('div', { class: 'stage tv-stage' }, body));
+  const timer = g.view?.endsAt
+    ? h('div', { class: 'timer tv-timer', dataset: { ends: String(g.view.endsAt), total: String(g.view.duration || 0) } }, '')
+    : null;
+  const body = renderer?.tv
+    ? renderer.tv(v, api())
+    : renderer?.render
+      ? renderer.render(v, api())
+      : h('pre', null, JSON.stringify(g?.view, null, 2));
+  return h(
+    'main',
+    { class: `screen tv-playing game-${g?.id}` },
+    h(
+      'header',
+      { class: 'topbar tv' },
+      h('div', { class: 'code-pill' }, h('span', { class: 'code-label' }, 'ROOM'), h('span', { class: 'code' }, v.code)),
+      h('div', { class: 'topbar-center' }, timer),
+      h('div', { class: 'muted' }, g?.name),
+    ),
+    h('div', { class: 'stage tv-stage' }, body),
+  );
 }
 
 let confettiFor = '';
@@ -147,10 +198,30 @@ function renderResults(v) {
       { class: 'podium' },
       order.map((p) => {
         const place = top.indexOf(p) + 1;
-        return h('div', { class: `podium-spot place-${place}` }, h('div', { class: 'podium-avatar' }, p.avatar), h('div', { class: 'podium-name' }, p.name), h('div', { class: 'podium-score' }, p.score), h('div', { class: 'podium-block' }, place === 1 ? '🏆' : place === 2 ? '🥈' : '🥉'));
-      })
+        return h(
+          'div',
+          { class: `podium-spot place-${place}` },
+          h('div', { class: 'podium-avatar' }, p.avatar),
+          h('div', { class: 'podium-name' }, p.name),
+          h('div', { class: 'podium-score' }, p.score),
+          h('div', { class: 'podium-block' }, place === 1 ? '🏆' : place === 2 ? '🥈' : '🥉'),
+        );
+      }),
     ),
     renderer?.renderSummary ? renderer.renderSummary(r, api()) : null,
-    h('ol', { class: 'standings' }, standings.map((p, i) => h('li', null, h('span', { class: 'rank' }, i + 1), h('span', { class: 'p-avatar' }, p.avatar), h('span', { class: 'p-name' }, p.name), h('span', { class: 'p-score' }, p.score))))
+    h(
+      'ol',
+      { class: 'standings' },
+      standings.map((p, i) =>
+        h(
+          'li',
+          null,
+          h('span', { class: 'rank' }, p.rank || i + 1),
+          h('span', { class: 'p-avatar' }, p.avatar),
+          h('span', { class: 'p-name' }, p.name, p.tied ? h('span', { class: 'muted small' }, ' (tie)') : null),
+          h('span', { class: 'p-score' }, p.score),
+        ),
+      ),
+    ),
   );
 }

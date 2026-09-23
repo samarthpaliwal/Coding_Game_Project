@@ -12,7 +12,9 @@ async function phaseOf(page) {
   return page.evaluate(() => document.body.dataset.phase + ':' + (document.querySelector('main')?.className || ''));
 }
 async function waitPhase(page, cls, ms = 20000) {
-  await page.waitForFunction((c) => document.querySelector(`main.playing .stage ${c}`) || document.querySelector(`main${c}`), cls, { timeout: ms });
+  await page.waitForFunction((c) => document.querySelector(`main.playing .stage ${c}`) || document.querySelector(`main${c}`), cls, {
+    timeout: ms,
+  });
 }
 const gameView = (page) => page.evaluate(() => window.__view?.game?.view || null);
 
@@ -38,7 +40,14 @@ try {
     const isFinal = round === 4;
     await Promise.all(phones.map((p) => p.waitForSelector('.role-card', { timeout: 15000 })));
     log(`round ${round}: briefing`);
-    const roles = await Promise.all(phones.map((p) => p.evaluate(() => ({ role: document.querySelector('.role-card')?.className.includes('smuggler') ? 'smuggler' : 'clean', word: document.querySelector('.role-word')?.textContent || null }))));
+    const roles = await Promise.all(
+      phones.map((p) =>
+        p.evaluate(() => ({
+          role: document.querySelector('.role-card')?.className.includes('smuggler') ? 'smuggler' : 'clean',
+          word: document.querySelector('.role-word')?.textContent || null,
+        })),
+      ),
+    );
     if (round === 1) {
       await shot(phones.find((_, i) => roles[i].role === 'smuggler') || ana, 'c02-briefing-smuggler');
       await shot(phones.find((_, i) => roles[i].role === 'clean') || ben, 'c03-briefing-clean');
@@ -56,7 +65,9 @@ try {
       const targetName = ['Ana', 'Ben', 'Cy'][si];
       await tapper.click(`.sheet-target:has-text("${targetName}")`);
       await phones[si].fill('#answer', 'I am typing live ');
-      await tapper.waitForFunction(() => (document.getElementById('tap-text')?.textContent || '').includes('typing live'), null, { timeout: 5000 });
+      await tapper.waitForFunction(() => (document.getElementById('tap-text')?.textContent || '').includes('typing live'), null, {
+        timeout: 5000,
+      });
       await phones[si].waitForSelector('.tapped-banner');
       await shot(tapper, 'c05-write-wiretap-tapper');
       await shot(phones[si], 'c06-write-tapped-smuggler');

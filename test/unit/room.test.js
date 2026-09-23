@@ -22,7 +22,7 @@ test('create and join a room; views stay in sync', async () => {
   assert.equal(pv.you.isHost, false);
   assert.deepEqual(
     pv.players.map((p) => p.name),
-    ['Ana', 'Ben', 'Cy']
+    ['Ana', 'Ben', 'Cy'],
   );
   players.forEach((p) => p.close());
 });
@@ -32,7 +32,7 @@ test('duplicate names get a suffix, bad names are rejected', async () => {
   const v = await players[0].untilView((v) => v.players.length === 2);
   assert.deepEqual(
     v.players.map((p) => p.name),
-    ['Sam', 'Sam 2']
+    ['Sam', 'Sam 2'],
   );
   const c = await TestClient.connect(srv.url);
   c.send({ t: 'join', code, name: '   ' });

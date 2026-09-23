@@ -29,24 +29,7 @@ const MIME = {
   '.mp3': 'audio/mpeg',
 };
 
-const AVATARS = [
-  '🦊',
-  '🐸',
-  '🐙',
-  '🦄',
-  '🐝',
-  '🦖',
-  '🐼',
-  '🦩',
-  '🐨',
-  '🦑',
-  '🐧',
-  '🦔',
-  '🐲',
-  '🦜',
-  '🐺',
-  '🦋',
-];
+const AVATARS = ['🦊', '🐸', '🐙', '🦄', '🐝', '🦖', '🐼', '🦩', '🐨', '🦑', '🐧', '🦔', '🐲', '🦜', '🐺', '🦋'];
 
 function serveFile(res, filePath) {
   fs.readFile(filePath, (err, data) => {

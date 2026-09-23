@@ -283,6 +283,7 @@ export class Room {
       .map((p) => p.publicInfo())
       .sort((a, b) => b.score - a.score);
     this.lastResults = { gameId: module?.id, gameName: module?.name, standings, ...(results || {}) };
+    if (!Array.isArray(this.lastResults.standings) || !this.lastResults.standings.length) this.lastResults.standings = standings;
     for (const p of this.players.values()) p.spectator = false;
     this.touch();
     this.sync();
@@ -350,15 +351,18 @@ export class Room {
 
   setTimer(ms, fn) {
     this.clearTimer();
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      try {
-        fn();
-      } catch (err) {
-        console.error(`[room ${this.code}] timer error`, err);
-      }
-      this.sync();
-    }, Math.max(0, ms));
+    this.timer = setTimeout(
+      () => {
+        this.timer = null;
+        try {
+          fn();
+        } catch (err) {
+          console.error(`[room ${this.code}] timer error`, err);
+        }
+        this.sync();
+      },
+      Math.max(0, ms),
+    );
   }
 
   clearTimer() {
@@ -456,9 +460,7 @@ export class Room {
       gamesPlayed: this.gamesPlayed,
       results: this.phase === 'results' ? this.lastResults : null,
       log: this.log.slice(-6),
-      game: this.game
-        ? { id: this.game.id, name: this.game.module.name, settings: this.game.settings }
-        : null,
+      game: this.game ? { id: this.game.id, name: this.game.module.name, settings: this.game.settings } : null,
     };
   }
 

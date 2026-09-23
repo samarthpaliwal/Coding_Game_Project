@@ -4,7 +4,32 @@ import { Net } from './net.js';
 import { h, render, startTicker, toast, vibrate, copyText, confetti, unlockAudio, beep, setMuted, plural, qrSvg } from './ui.js';
 import { GAME_RENDERERS } from './games/index.js';
 
-const AVATARS = ['🦊', '🐸', '🐙', '🦄', '🐝', '🦖', '🐼', '🦩', '🐨', '🦑', '🐧', '🦔', '🐲', '🦜', '🐺', '🦋', '🐢', '🦥', '🐳', '🦉', '🐷', '🦁', '🐮', '🦎'];
+const AVATARS = [
+  '🦊',
+  '🐸',
+  '🐙',
+  '🦄',
+  '🐝',
+  '🦖',
+  '🐼',
+  '🦩',
+  '🐨',
+  '🦑',
+  '🐧',
+  '🦔',
+  '🐲',
+  '🦜',
+  '🐺',
+  '🦋',
+  '🐢',
+  '🦥',
+  '🐳',
+  '🦉',
+  '🐷',
+  '🦁',
+  '🐮',
+  '🦎',
+];
 const SESSION_KEY = 'contraband.session';
 const PREFS_KEY = 'contraband.prefs';
 
@@ -166,7 +191,16 @@ function paint() {
       doPaint();
     } catch (err) {
       console.error(err);
-      render(root, h('div', { class: 'screen center' }, h('h2', null, 'Something broke on this screen'), h('p', { class: 'muted' }, String(err.message)), h('button', { class: 'btn', onClick: () => location.reload() }, 'Reload')));
+      render(
+        root,
+        h(
+          'div',
+          { class: 'screen center' },
+          h('h2', null, 'Something broke on this screen'),
+          h('p', { class: 'muted' }, String(err.message)),
+          h('button', { class: 'btn', onClick: () => location.reload() }, 'Reload'),
+        ),
+      );
     }
   });
 }
@@ -199,9 +233,19 @@ function topBar(v, { center } = {}) {
   return h(
     'header',
     { class: 'topbar' },
-    h('button', { class: 'code-pill', title: 'Copy invite link', onClick: () => shareLink(v.code) }, h('span', { class: 'code-label' }, 'ROOM'), h('span', { class: 'code' }, v.code)),
+    h(
+      'button',
+      { class: 'code-pill', title: 'Copy invite link', onClick: () => shareLink(v.code) },
+      h('span', { class: 'code-label' }, 'ROOM'),
+      h('span', { class: 'code' }, v.code),
+    ),
     h('div', { class: 'topbar-center' }, center || null),
-    h('div', { class: 'topbar-right' }, h('span', { class: `net-dot ${online ? 'on' : 'off'}`, title: online ? 'Connected' : 'Reconnecting…' }), h('span', { class: 'me-avatar', title: v.you?.name }, v.you?.avatar || ''))
+    h(
+      'div',
+      { class: 'topbar-right' },
+      h('span', { class: `net-dot ${online ? 'on' : 'off'}`, title: online ? 'Connected' : 'Reconnecting…' }),
+      h('span', { class: 'me-avatar', title: v.you?.name }, v.you?.avatar || ''),
+    ),
   );
 }
 
@@ -250,11 +294,36 @@ function renderHome() {
   return h(
     'main',
     { class: 'screen home' },
-    h('div', { class: 'hero' }, h('div', { class: 'logo-wrap' }, h('div', { class: 'logo' }, 'CONTRA', h('span', null, 'BAND')), h('div', { class: 'stamp-classified', 'aria-hidden': 'true' }, 'CLASSIFIED')), h('p', { class: 'tagline' }, 'Sneak the word. Steal the laugh. Don\'t get caught.'), h('p', { class: 'tagline small' }, 'One room code. Everyone on their own phone. Nothing to install.')),
+    h(
+      'div',
+      { class: 'hero' },
+      h(
+        'div',
+        { class: 'logo-wrap' },
+        h('div', { class: 'logo' }, 'CONTRA', h('span', null, 'BAND')),
+        h('div', { class: 'stamp-classified', 'aria-hidden': 'true' }, 'CLASSIFIED'),
+      ),
+      h('p', { class: 'tagline' }, "Sneak the word. Steal the laugh. Don't get caught."),
+      h('p', { class: 'tagline small' }, 'One room code. Everyone on their own phone. Nothing to install.'),
+    ),
     h(
       'form',
       { class: 'card form', onSubmit: submit(hasCode ? 'join' : 'create') },
-      h('label', { class: 'field' }, h('span', null, 'Your name'), h('input', { id: 'name', type: 'text', maxlength: '16', autocomplete: 'nickname', placeholder: 'e.g. Sam', value: p.name, onInput: setName, enterkeyhint: 'go' })),
+      h(
+        'label',
+        { class: 'field' },
+        h('span', null, 'Your name'),
+        h('input', {
+          id: 'name',
+          type: 'text',
+          maxlength: '16',
+          autocomplete: 'nickname',
+          placeholder: 'e.g. Sam',
+          value: p.name,
+          onInput: setName,
+          enterkeyhint: 'go',
+        }),
+      ),
       h(
         'div',
         { class: 'avatars', role: 'radiogroup', 'aria-label': 'Pick an avatar' },
@@ -273,15 +342,43 @@ function renderHome() {
                 paint();
               },
             },
-            a
-          )
-        )
+            a,
+          ),
+        ),
       ),
-      h('div', { class: 'join-row' }, h('label', { class: 'field code-field' }, h('span', null, 'Room code'), h('input', { id: 'code', type: 'text', maxlength: '4', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false', placeholder: 'ABCD', value: state.urlCode || '', onInput: (e) => (e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4)) })), h('button', { type: 'button', class: 'btn primary', disabled: state.busy, onClick: submit('join') }, state.busy ? '…' : 'Join')),
+      h(
+        'div',
+        { class: 'join-row' },
+        h(
+          'label',
+          { class: 'field code-field' },
+          h('span', null, 'Room code'),
+          h('input', {
+            id: 'code',
+            type: 'text',
+            maxlength: '4',
+            autocapitalize: 'characters',
+            autocomplete: 'off',
+            spellcheck: 'false',
+            placeholder: 'ABCD',
+            value: state.urlCode || '',
+            onInput: (e) =>
+              (e.target.value = e.target.value
+                .toUpperCase()
+                .replace(/[^A-Z]/g, '')
+                .slice(0, 4)),
+          }),
+        ),
+        h('button', { type: 'button', class: 'btn primary', disabled: state.busy, onClick: submit('join') }, state.busy ? '…' : 'Join'),
+      ),
       h('div', { class: 'or' }, h('span', null, 'or')),
-      h('button', { type: 'button', class: 'btn big', disabled: state.busy, onClick: submit('create') }, state.busy ? 'Connecting…' : 'Create a new room')
+      h(
+        'button',
+        { type: 'button', class: 'btn big', disabled: state.busy, onClick: submit('create') },
+        state.busy ? 'Connecting…' : 'Create a new room',
+      ),
     ),
-    h('p', { class: 'foot muted' }, 'Got a TV? Open ', h('a', { href: '/tv' }, '/tv'), ' on it and type the code.')
+    h('p', { class: 'foot muted' }, 'Got a TV? Open ', h('a', { href: '/tv' }, '/tv'), ' on it and type the code.'),
   );
 }
 
@@ -303,9 +400,18 @@ function renderLobby(v) {
       'section',
       { class: 'invite' },
       h('div', { class: 'invite-code', onClick: () => shareLink(v.code) }, ...v.code.split('').map((ch) => h('span', null, ch))),
-      h('div', { class: 'invite-actions' }, h('button', { class: 'btn small', onClick: () => shareLink(v.code) }, 'Copy link'), h('button', { class: 'btn small ghost', onClick: () => ((state.showQr = !state.showQr), paint()) }, state.showQr ? 'Hide QR' : 'Show QR')),
+      h(
+        'div',
+        { class: 'invite-actions' },
+        h('button', { class: 'btn small', onClick: () => shareLink(v.code) }, 'Copy link'),
+        h(
+          'button',
+          { class: 'btn small ghost', onClick: () => ((state.showQr = !state.showQr), paint()) },
+          state.showQr ? 'Hide QR' : 'Show QR',
+        ),
+      ),
       state.showQr ? h('div', { class: 'qr', html: qrSvg(url, 5) }) : null,
-      h('p', { class: 'muted small' }, 'Friends open ', h('b', null, location.host), ' and type the code, or scan.')
+      h('p', { class: 'muted small' }, 'Friends open ', h('b', null, location.host), ' and type the code, or scan.'),
     ),
     h(
       'section',
@@ -319,44 +425,71 @@ function renderLobby(v) {
             'li',
             { class: `player ${p.connected ? '' : 'away'} ${p.id === me.id ? 'me' : ''}` },
             h('span', { class: 'p-avatar' }, p.avatar),
-            h('span', { class: 'p-name' }, p.name, p.id === v.hostId ? h('span', { class: 'crown', title: 'Host' }, ' 👑') : null, p.id === me.id ? h('span', { class: 'muted' }, ' (you)') : null),
+            h(
+              'span',
+              { class: 'p-name' },
+              p.name,
+              p.id === v.hostId ? h('span', { class: 'crown', title: 'Host' }, ' 👑') : null,
+              p.id === me.id ? h('span', { class: 'muted' }, ' (you)') : null,
+            ),
             v.gamesPlayed > 0 ? h('span', { class: 'p-score' }, p.score) : null,
             !p.connected ? h('span', { class: 'muted small' }, 'away') : null,
-            me.isHost && p.id !== me.id ? h('button', { class: 'kick', title: 'Remove', onClick: () => confirmKick(p) }, '×') : null
-          )
-        )
-      )
+            me.isHost && p.id !== me.id ? h('button', { class: 'kick', title: 'Remove', onClick: () => confirmKick(p) }, '×') : null,
+          ),
+        ),
+      ),
     ),
     h(
       'section',
       { class: 'game-pick' },
       v.catalog.length > 1 ? h('h3', null, me.isHost ? 'Pick a game' : 'Game') : null,
       v.catalog.length === 1 && GAME_RENDERERS[game?.id]?.renderHowTo ? GAME_RENDERERS[game.id].renderHowTo(v, api()) : null,
-      v.catalog.length === 1 ? null : h(
-        'div',
-        { class: 'game-cards' },
-        (me.isHost ? v.catalog : v.catalog.filter((g) => g.id === game?.id)).map((g) =>
-          h(
-            'button',
-            { class: `game-card ${g.id === game?.id ? 'selected' : ''}`, disabled: !me.isHost, onClick: () => api().host('settings', { settings: { gameId: g.id } }) },
-            h('div', { class: 'g-name' }, g.name),
-            h('div', { class: 'g-tag' }, g.tagline),
-            h('div', { class: 'g-meta' }, `${g.minPlayers}–${g.maxPlayers} players · ~${g.minutes} min`)
-          )
-        )
-      ),
-      game && Object.keys(game.settingsSchema || {}).length ? renderSettings(v, game) : null
+      v.catalog.length === 1
+        ? null
+        : h(
+            'div',
+            { class: 'game-cards' },
+            (me.isHost ? v.catalog : v.catalog.filter((g) => g.id === game?.id)).map((g) =>
+              h(
+                'button',
+                {
+                  class: `game-card ${g.id === game?.id ? 'selected' : ''}`,
+                  disabled: !me.isHost,
+                  onClick: () => api().host('settings', { settings: { gameId: g.id } }),
+                },
+                h('div', { class: 'g-name' }, g.name),
+                h('div', { class: 'g-tag' }, g.tagline),
+                h('div', { class: 'g-meta' }, `${g.minPlayers}–${g.maxPlayers} players · ~${g.minutes} min`),
+              ),
+            ),
+          ),
+      game && Object.keys(game.settingsSchema || {}).length ? renderSettings(v, game) : null,
     ),
     h(
       'section',
       { class: 'start' },
       me.isHost
-        ? h('button', { class: 'btn big primary', disabled: !canStart, onClick: () => api().host('start') }, canStart ? `Start ${game.name}` : `Need ${game ? game.minPlayers : 3}+ players`)
+        ? h(
+            'button',
+            { class: 'btn big primary', disabled: !canStart, onClick: () => api().host('start') },
+            canStart ? `Start ${game.name}` : `Need ${game ? game.minPlayers : 3}+ players`,
+          )
         : h('div', { class: 'waiting' }, h('span', { class: 'pulse' }), `Waiting for ${host ? host.name : 'the host'} to start…`),
-      v.gamesPlayed > 0 && me.isHost ? h('button', { class: 'btn ghost small', onClick: () => api().host('reset_scores') }, 'Reset scores') : null,
-      h('button', { class: 'btn ghost small', onClick: leaveRoom }, 'Leave room')
+      v.gamesPlayed > 0 && me.isHost
+        ? h('button', { class: 'btn ghost small', onClick: () => api().host('reset_scores') }, 'Reset scores')
+        : null,
+      h('button', { class: 'btn ghost small', onClick: leaveRoom }, 'Leave room'),
     ),
-    v.log?.length ? h('ul', { class: 'feed' }, v.log.slice(-4).reverse().map((l) => h('li', null, l.text))) : null
+    v.log?.length
+      ? h(
+          'ul',
+          { class: 'feed' },
+          v.log
+            .slice(-4)
+            .reverse()
+            .map((l) => h('li', null, l.text)),
+        )
+      : null,
   );
 }
 
@@ -369,18 +502,48 @@ function renderSettings(v, game) {
       control = h(
         'div',
         { class: 'stepper' },
-        h('button', { class: 'btn small', disabled: !a.isHost || value <= def.min, onClick: () => a.host('settings', { settings: { [key]: value - (def.step || 1) } }) }, '−'),
+        h(
+          'button',
+          {
+            class: 'btn small',
+            disabled: !a.isHost || value <= def.min,
+            onClick: () => a.host('settings', { settings: { [key]: value - (def.step || 1) } }),
+          },
+          '−',
+        ),
         h('span', { class: 'stepper-val' }, value),
-        h('button', { class: 'btn small', disabled: !a.isHost || value >= def.max, onClick: () => a.host('settings', { settings: { [key]: value + (def.step || 1) } }) }, '+')
+        h(
+          'button',
+          {
+            class: 'btn small',
+            disabled: !a.isHost || value >= def.max,
+            onClick: () => a.host('settings', { settings: { [key]: value + (def.step || 1) } }),
+          },
+          '+',
+        ),
       );
     } else if (def.type === 'choice') {
       control = h(
         'div',
         { class: 'segmented' },
-        def.options.map((o) => h('button', { class: `seg ${o.value === value ? 'on' : ''}`, disabled: !a.isHost, onClick: () => a.host('settings', { settings: { [key]: o.value } }) }, o.label))
+        def.options.map((o) =>
+          h(
+            'button',
+            {
+              class: `seg ${o.value === value ? 'on' : ''}`,
+              disabled: !a.isHost,
+              onClick: () => a.host('settings', { settings: { [key]: o.value } }),
+            },
+            o.label,
+          ),
+        ),
       );
     } else if (def.type === 'boolean') {
-      control = h('button', { class: `toggle ${value ? 'on' : ''}`, disabled: !a.isHost, onClick: () => a.host('settings', { settings: { [key]: !value } }) }, value ? 'On' : 'Off');
+      control = h(
+        'button',
+        { class: `toggle ${value ? 'on' : ''}`, disabled: !a.isHost, onClick: () => a.host('settings', { settings: { [key]: !value } }) },
+        value ? 'On' : 'Off',
+      );
     }
     return h('div', { class: 'setting' }, h('span', { class: 'setting-label' }, def.label), control);
   });
@@ -410,15 +573,17 @@ function renderPlaying(v) {
       clearKeep();
       state.keepScope = g?.id;
     }
-    root.classList.remove('phase-enter');
-    void root.offsetWidth;
     root.classList.add('phase-enter');
+    clearTimeout(state.enterTimer);
+    state.enterTimer = setTimeout(() => root.classList.remove('phase-enter'), 450);
   }
   if (!renderer) {
     return h('main', { class: 'screen' }, topBar(v), h('pre', { class: 'debug' }, JSON.stringify(g?.view, null, 2)));
   }
   const a = api();
-  const timer = g.view?.endsAt ? h('div', { class: 'timer', dataset: { ends: String(g.view.endsAt), total: String(g.view.duration || 0) } }, '') : null;
+  const timer = g.view?.endsAt
+    ? h('div', { class: 'timer', dataset: { ends: String(g.view.endsAt), total: String(g.view.duration || 0) } }, '')
+    : null;
   const body = renderer.render(v, a);
   return h(
     'main',
@@ -426,7 +591,14 @@ function renderPlaying(v) {
     topBar(v, { center: timer }),
     v.you.spectator ? h('div', { class: 'banner' }, 'You are watching this game. You will be in the next one.') : null,
     h('div', { class: 'stage' }, body),
-    a.isHost ? h('div', { class: 'host-tools' }, h('button', { class: 'btn ghost tiny', onClick: () => a.host('skip') }, 'Skip phase'), h('button', { class: 'btn ghost tiny', onClick: () => a.host('end') }, 'End game')) : null
+    a.isHost
+      ? h(
+          'div',
+          { class: 'host-tools' },
+          h('button', { class: 'btn ghost tiny', onClick: () => a.host('skip') }, 'Skip phase'),
+          h('button', { class: 'btn ghost tiny', onClick: () => a.host('end') }, 'End game'),
+        )
+      : null,
   );
 }
 
@@ -458,19 +630,40 @@ function renderResults(v) {
       { class: 'podium' },
       order.map((p) => {
         const place = top.indexOf(p) + 1;
-        return h('div', { class: `podium-spot place-${place} ${p.id === me.id ? 'me' : ''}` }, h('div', { class: 'podium-avatar' }, p.avatar), h('div', { class: 'podium-name' }, p.name), h('div', { class: 'podium-score' }, p.score), h('div', { class: 'podium-block' }, place === 1 ? '🏆' : place === 2 ? '🥈' : '🥉'));
-      })
+        return h(
+          'div',
+          { class: `podium-spot place-${place} ${p.id === me.id ? 'me' : ''}` },
+          h('div', { class: 'podium-avatar' }, p.avatar),
+          h('div', { class: 'podium-name' }, p.name),
+          h('div', { class: 'podium-score' }, p.score),
+          h('div', { class: 'podium-block' }, place === 1 ? '🏆' : place === 2 ? '🥈' : '🥉'),
+        );
+      }),
     ),
     renderer?.renderSummary ? renderer.renderSummary(r, api()) : null,
     h(
       'ol',
       { class: 'standings' },
-      standings.map((p, i) => h('li', { class: p.id === me.id ? 'me' : '' }, h('span', { class: 'rank' }, i + 1), h('span', { class: 'p-avatar' }, p.avatar), h('span', { class: 'p-name' }, p.name), h('span', { class: 'p-score' }, p.score)))
+      standings.map((p, i) =>
+        h(
+          'li',
+          { class: p.id === me.id ? 'me' : '' },
+          h('span', { class: 'rank' }, p.rank || i + 1),
+          h('span', { class: 'p-avatar' }, p.avatar),
+          h('span', { class: 'p-name' }, p.name, p.tied ? h('span', { class: 'muted small' }, ' (tie)') : null),
+          h('span', { class: 'p-score' }, p.score),
+        ),
+      ),
     ),
     me.isHost
-      ? h('div', { class: 'results-actions' }, h('button', { class: 'btn big primary', onClick: () => api().host('start') }, 'Play again'), h('button', { class: 'btn', onClick: () => api().host('lobby') }, 'Change game'))
+      ? h(
+          'div',
+          { class: 'results-actions' },
+          h('button', { class: 'btn big primary', onClick: () => api().host('start') }, 'Play again'),
+          h('button', { class: 'btn', onClick: () => api().host('lobby') }, 'Change game'),
+        )
       : h('div', { class: 'waiting' }, h('span', { class: 'pulse' }), 'Waiting for the host…'),
-    h('button', { class: 'btn ghost small', onClick: leaveRoom }, 'Leave room')
+    h('button', { class: 'btn ghost small', onClick: leaveRoom }, 'Leave room'),
   );
 }
 

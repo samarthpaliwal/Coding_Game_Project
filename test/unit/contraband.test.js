@@ -211,7 +211,10 @@ test('full game: submit/vote/accuse/reveal/scoreboard, final lineup, results wit
     await Promise.all(players.map((p) => untilPhase(p, 'vote')));
     const answers = gv(host).answers;
     assert.equal(answers.length, 4);
-    assert.ok(answers.every((a) => a.id === null), 'author ids hidden during vote');
+    assert.ok(
+      answers.every((a) => a.id === null),
+      'author ids hidden during vote',
+    );
     for (const p of players) {
       const mine = gv(p).answers.find((a) => a.mine);
       const other = gv(p).answers.find((a) => !a.mine && !a.filler);
@@ -220,7 +223,10 @@ test('full game: submit/vote/accuse/reveal/scoreboard, final lineup, results wit
     }
     await Promise.all(players.map((p) => untilPhase(p, 'accuse')));
     const acc = gv(host);
-    assert.ok(acc.answers.every((a) => a.id), 'names public during accuse');
+    assert.ok(
+      acc.answers.every((a) => a.id),
+      'names public during accuse',
+    );
     assert.ok(acc.heat && typeof acc.heat.nobody === 'number');
     for (const p of players) {
       const target = gv(p).answers.find((a) => a.id !== p.playerId);

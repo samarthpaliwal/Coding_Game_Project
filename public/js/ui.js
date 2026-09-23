@@ -55,7 +55,8 @@ export function render(root, ...nodes) {
 // Countdown ticker: every element with data-ends="<serverMs>" gets its text set to seconds left,
 // and --p (fraction remaining, using data-total ms) for progress bars.
 let tickerClock = () => Date.now();
-export function startTicker(clock) {
+let lastTickSec = -1;
+export function startTicker(clock, { quiet = false } = {}) {
   tickerClock = clock;
   const tick = () => {
     const now = tickerClock();
@@ -65,7 +66,15 @@ export function startTicker(clock) {
       const secs = Math.ceil(left / 1000);
       if (el.dataset.mode !== 'bar') {
         const txt = String(secs);
-        if (el.textContent !== txt) el.textContent = txt;
+        if (el.textContent !== txt) {
+          el.textContent = txt;
+          // last five seconds: a soft tick and a tiny buzz, once per second
+          if (!quiet && secs <= 5 && secs > 0 && lastTickSec !== secs && el.classList.contains('timer')) {
+            lastTickSec = secs;
+            beep('tick');
+            vibrate(10);
+          }
+        }
         el.classList.toggle('urgent', secs <= 5 && secs > 0);
       }
       const total = Number(el.dataset.total) || 0;
@@ -210,7 +219,10 @@ export function plural(n, word, words = word + 's') {
 }
 
 export function initials(name) {
-  return String(name || '?').trim().slice(0, 1).toUpperCase();
+  return String(name || '?')
+    .trim()
+    .slice(0, 1)
+    .toUpperCase();
 }
 
 export function qrSvg(text, cellSize = 4) {

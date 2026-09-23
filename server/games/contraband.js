@@ -52,7 +52,17 @@ export const T = {
 
 if (process.env.CONTRABAND_FAST === '1') {
   // Test-only: short phases so an automated browser can play a whole game in under a minute.
-  Object.assign(T, { BRIEF_SECONDS: 2, BRIEF_FINAL_SECONDS: 2, WRITE_SECONDS: 20, VOTE_SECONDS: () => 15, ACCUSE_SECONDS: () => 15, LINEUP_SECONDS: () => 20, REVEAL_SECONDS: () => 4, SCOREBOARD_SECONDS: 2.5, CARD_STEP_MS: 500 });
+  Object.assign(T, {
+    BRIEF_SECONDS: 2,
+    BRIEF_FINAL_SECONDS: 2,
+    WRITE_SECONDS: 20,
+    VOTE_SECONDS: () => 15,
+    ACCUSE_SECONDS: () => 15,
+    LINEUP_SECONDS: () => 20,
+    REVEAL_SECONDS: () => 4,
+    SCOREBOARD_SECONDS: 2.5,
+    CARD_STEP_MS: 500,
+  });
 }
 
 const TIERS = { 1: TIER1, 2: TIER2, 3: TIER3 };
@@ -65,7 +75,10 @@ function banks(ctx) {
   const store = ctx.store;
   if (!store.banks) {
     store.banks = {
-      prompts: new BankCursor(PROMPTS.map((p, i) => ({ ...p, id: i })), ctx.rng),
+      prompts: new BankCursor(
+        PROMPTS.map((p, i) => ({ ...p, id: i })),
+        ctx.rng,
+      ),
       words: { 1: new BankCursor(TIER1, ctx.rng), 2: new BankCursor(TIER2, ctx.rng), 3: new BankCursor(TIER3, ctx.rng) },
       callbacks: new BankCursor(CALLBACKS.templates, ctx.rng),
       fallbacks: new BankCursor(CALLBACKS.fallbacks, ctx.rng),
@@ -141,7 +154,12 @@ function finalePrompt(state, ctx) {
   }
   if (best && best.weight > 0) {
     const tpl = b.callbacks.next();
-    return { id: -1, text: tpl.replace('{answer}', `“${best.text}”`), subjectId: null, callback: { round: best.round, authorId: best.authorId, answer: best.text } };
+    return {
+      id: -1,
+      text: tpl.replace('{answer}', `“${best.text}”`),
+      subjectId: null,
+      callback: { round: best.round, authorId: best.authorId, answer: best.text },
+    };
   }
   return { id: -2, text: b.fallbacks.next(), subjectId: null, callback: null };
 }
@@ -201,7 +219,9 @@ export function norm(s) {
 }
 
 function validAnswer(cur, id, text) {
-  let t = cleanText(text, T.ANSWER_MAX).replace(/https?:\/\/\S+/gi, '').trim();
+  let t = cleanText(text, T.ANSWER_MAX)
+    .replace(/https?:\/\/\S+/gi, '')
+    .trim();
   if (t.length < T.ANSWER_MIN) return null;
   const word = cur.smugglers[id];
   if (word && !norm(t).includes(norm(word))) return null;
@@ -338,7 +358,9 @@ const contraband = {
         if (state.phase !== 'write') throw new RoomError('not_now', 'Writing time is over.');
         if (!isParticipant) throw new RoomError('not_now', 'You are not in this round.');
         if (cur.answers[id]) throw new RoomError('not_now', 'You already submitted.');
-        const raw = cleanText(a.text, T.ANSWER_MAX).replace(/https?:\/\/\S+/gi, '').trim();
+        const raw = cleanText(a.text, T.ANSWER_MAX)
+          .replace(/https?:\/\/\S+/gi, '')
+          .trim();
         if (raw.length < T.ANSWER_MIN) throw new RoomError('bad_action', 'Write a little more than that.');
         const word = cur.smugglers[id];
         if (word && !norm(raw).includes(norm(word))) throw new RoomError('missing_word', `Your answer must include “${word}”.`);
@@ -354,7 +376,8 @@ const contraband = {
         if (me.wiretaps <= 0) throw new RoomError('no_tokens', 'No wiretap tokens left. Finish last to earn one.');
         if (cur.wiretaps[id]) throw new RoomError('not_now', 'One wiretap per round.');
         const target = String(a.targetId || '');
-        if (target === id || !cur.participants.includes(target) || cur.left.has(target)) throw new RoomError('bad_action', 'Pick someone in this round.');
+        if (target === id || !cur.participants.includes(target) || cur.left.has(target))
+          throw new RoomError('bad_action', 'Pick someone in this round.');
         me.wiretaps--;
         cur.wiretaps[id] = target;
         (cur.tappedBy[target] ||= []).push(id);
@@ -370,7 +393,8 @@ const contraband = {
         if (cur.votes[id] !== undefined) throw new RoomError('not_now', 'You already voted.');
         const key = Number(a.key);
         const authorId = cur.order[key];
-        if (!authorId || authorId === id || !cur.answers[authorId] || cur.answers[authorId].filler) throw new RoomError('bad_action', 'You cannot vote for that one.');
+        if (!authorId || authorId === id || !cur.answers[authorId] || cur.answers[authorId].filler)
+          throw new RoomError('bad_action', 'You cannot vote for that one.');
         cur.votes[id] = authorId;
         clearAfk();
         if (everyoneDone(ctx, voters(state, cur, ctx), cur.votes)) finishPhase(state, ctx);
@@ -452,7 +476,16 @@ const contraband = {
 };
 
 function freshPlayer(round) {
-  return { timesSmuggled: 0, subjectCount: 0, wiretaps: T.WIRETAP_START, strikes: 0, afk: false, joinedRound: round, acted: false, lastReact: 0 };
+  return {
+    timesSmuggled: 0,
+    subjectCount: 0,
+    wiretaps: T.WIRETAP_START,
+    strikes: 0,
+    afk: false,
+    joinedRound: round,
+    acted: false,
+    lastReact: 0,
+  };
 }
 
 // ---------- round flow ----------
@@ -599,7 +632,10 @@ function buildLineupOptions(state, ctx) {
   const currentWords = new Set(Object.values(cur.smugglers));
   const earlier = [];
   for (const r of state.rounds) for (const w of Object.values(r.smugglers || {})) if (!currentWords.has(w)) earlier.push(w);
-  const bankPool = shuffle((TIERS[cur.tier] || TIER2).filter((w) => !currentWords.has(w)), ctx.rng);
+  const bankPool = shuffle(
+    (TIERS[cur.tier] || TIER2).filter((w) => !currentWords.has(w)),
+    ctx.rng,
+  );
   let bankIdx = 0;
   for (const id of votable(cur)) {
     const real = cur.smugglers[id];
@@ -780,11 +816,28 @@ function scoreRound(state, ctx) {
   }
   let cleanStamp = null;
   if (cleanRound && accusers.length) {
-    const worst = accusers.filter((a) => !cur.accusations[a].nobody).sort((a, b) => cur.accusations[b].picks.length - cur.accusations[a].picks.length)[0];
-    cleanStamp = stampLine(state, ctx, 'clean_round', { name: worst ? ctx.player(worst)?.name || 'Someone' : 'Everyone', n: worst ? cur.accusations[worst].picks.length : 0, word: '' });
+    const worst = accusers
+      .filter((a) => !cur.accusations[a].nobody)
+      .sort((a, b) => cur.accusations[b].picks.length - cur.accusations[a].picks.length)[0];
+    cleanStamp = stampLine(state, ctx, 'clean_round', {
+      name: worst ? ctx.player(worst)?.name || 'Someone' : 'Everyone',
+      n: worst ? cur.accusations[worst].picks.length : 0,
+      word: '',
+    });
   }
-  const fullBustStamps = fullBusters.map((id) => stampLine(state, ctx, 'full_bust', { name: ctx.player(id)?.name || 'Someone', n: effectiveCount, word: '' }));
-  return { cards, cleanRound, nobodyVoters, fullBusters, cleanStamp, fullBustStamps, deltas, wiretaps: Object.entries(cur.wiretaps).map(([tapperId, targetId]) => ({ tapperId, targetId })) };
+  const fullBustStamps = fullBusters.map((id) =>
+    stampLine(state, ctx, 'full_bust', { name: ctx.player(id)?.name || 'Someone', n: effectiveCount, word: '' }),
+  );
+  return {
+    cards,
+    cleanRound,
+    nobodyVoters,
+    fullBusters,
+    cleanStamp,
+    fullBustStamps,
+    deltas,
+    wiretaps: Object.entries(cur.wiretaps).map(([tapperId, targetId]) => ({ tapperId, targetId })),
+  };
 }
 
 function scoreFinal(state, ctx) {
@@ -826,7 +879,9 @@ function scoreFinal(state, ctx) {
     const name = ctx.player(id)?.name || 'Someone';
     let stamp = null;
     if (real && !ans.filler && Object.keys(guesses).length) {
-      stamp = fooled.length ? stampLine(state, ctx, 'fooled', { word: real, name, n: fooled.length }) : stampLine(state, ctx, 'unfooled', { word: real, name, n: right.length });
+      stamp = fooled.length
+        ? stampLine(state, ctx, 'fooled', { word: real, name, n: fooled.length })
+        : stampLine(state, ctx, 'unfooled', { word: real, name, n: right.length });
     }
     cards.push({
       id,
@@ -848,9 +903,27 @@ function scoreFinal(state, ctx) {
       options: cur.lineupOptions[id] || null,
       left: cur.left.has(id),
     });
-    if (real && !ans.filler) state.stats.mostWanted.push({ word: real, id, name, outcome: fooled.length ? 'fooled' : 'seen', round: cur.round, votes: weight[id] || 0, isFinal: true });
+    if (real && !ans.filler)
+      state.stats.mostWanted.push({
+        word: real,
+        id,
+        name,
+        outcome: fooled.length ? 'fooled' : 'seen',
+        round: cur.round,
+        votes: weight[id] || 0,
+        isFinal: true,
+      });
   }
-  return { cards, cleanRound: false, nobodyVoters: [], fullBusters: [], cleanStamp: null, fullBustStamps: [], deltas, wiretaps: Object.entries(cur.wiretaps).map(([tapperId, targetId]) => ({ tapperId, targetId })) };
+  return {
+    cards,
+    cleanRound: false,
+    nobodyVoters: [],
+    fullBusters: [],
+    cleanStamp: null,
+    fullBustStamps: [],
+    deltas,
+    wiretaps: Object.entries(cur.wiretaps).map(([tapperId, targetId]) => ({ tapperId, targetId })),
+  };
 }
 
 function applyStrikes(state, cur) {
@@ -885,15 +958,27 @@ function grantUnderdog(state, ctx, cur) {
 
 function scoreboardRows(state, ctx, cur, underdog) {
   const players = ctx.players().filter((p) => state.players[p.id]);
-  const rows = players.map((p) => ({ id: p.id, score: p.score, delta: sumDelta(cur.results.deltas[p.id]), isNew: !!state.players[p.id].isNew && state.players[p.id].joinedRound === cur.round }));
-  const prevSorted = rows.slice().sort((a, b) => b.score - a.score - (b.delta - a.delta) || (state.stats.votes[b.id] || 0) - (state.stats.votes[a.id] || 0));
+  const rows = players.map((p) => ({
+    id: p.id,
+    score: p.score,
+    delta: sumDelta(cur.results.deltas[p.id]),
+    isNew: !!state.players[p.id].isNew && state.players[p.id].joinedRound === cur.round,
+  }));
+  const prevSorted = rows
+    .slice()
+    .sort((a, b) => b.score - a.score - (b.delta - a.delta) || (state.stats.votes[b.id] || 0) - (state.stats.votes[a.id] || 0));
   // previous rank = rank by (score - delta)
   const prevRank = {};
   prevSorted
     .slice()
     .sort((a, b) => b.score - b.delta - (a.score - a.delta))
     .forEach((r, i) => (prevRank[r.id] = i + 1));
-  rows.sort((a, b) => b.score - a.score || (state.stats.votes[b.id] || 0) - (state.stats.votes[a.id] || 0) || (state.stats.getaways[b.id] || 0) - (state.stats.getaways[a.id] || 0));
+  rows.sort(
+    (a, b) =>
+      b.score - a.score ||
+      (state.stats.votes[b.id] || 0) - (state.stats.votes[a.id] || 0) ||
+      (state.stats.getaways[b.id] || 0) - (state.stats.getaways[a.id] || 0),
+  );
   rows.forEach((r, i) => {
     r.rank = i + 1;
     r.prevRank = prevRank[r.id] || i + 1;
@@ -927,9 +1012,19 @@ function computeAwards(state, ctx) {
   const ghost = top(s.getaways);
   push('ghost', 'Ghost', ghost, ghost ? `${ghost.n} clean ${ghost.n === 1 ? 'getaway' : 'getaways'}. Never seen, never caught.` : '');
   const hound = top(s.correct);
-  push('bloodhound', 'Bloodhound', hound, hound ? `${hound.n} correct ${hound.n === 1 ? 'accusation' : 'accusations'}. Trusts nobody.` : '');
+  push(
+    'bloodhound',
+    'Bloodhound',
+    hound,
+    hound ? `${hound.n} correct ${hound.n === 1 ? 'accusation' : 'accusations'}. Trusts nobody.` : '',
+  );
   const fooledMost = top(s.wrong);
-  push('fooled', 'Most Fooled', fooledMost, fooledMost ? `Accused ${fooledMost.n} innocent ${fooledMost.n === 1 ? 'person' : 'people'}. Apologize.` : '');
+  push(
+    'fooled',
+    'Most Fooled',
+    fooledMost,
+    fooledMost ? `Accused ${fooledMost.n} innocent ${fooledMost.n === 1 ? 'person' : 'people'}. Apologize.` : '',
+  );
   const dis = top(s.fooled);
   push('disguise', 'Master of Disguise', dis, dis ? `Fooled ${dis.n} ${dis.n === 1 ? 'person' : 'people'} in the final.` : '');
   let wordOfTheNight = null;
@@ -940,14 +1035,39 @@ function computeAwards(state, ctx) {
   for (const r of state.rounds) {
     for (const c of r.results?.cards || []) {
       if (c.filler) continue;
-      if (!topAnswer || c.voteWeight > topAnswer.votes) topAnswer = { text: c.text, name: nameOf(c.id), votes: c.voteWeight, round: r.round };
+      if (!topAnswer || c.voteWeight > topAnswer.votes)
+        topAnswer = { text: c.text, name: nameOf(c.id), votes: c.voteWeight, round: r.round };
     }
   }
   const finale = state.cur?.prompt || null;
+  // Standings: score, then funny votes, then clean getaways, then who joined first.
+  const standings = ctx
+    .players()
+    .map((p) => p.publicInfo())
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        (s.votes[b.id] || 0) - (s.votes[a.id] || 0) ||
+        (s.getaways[b.id] || 0) - (s.getaways[a.id] || 0) ||
+        (ctx.player(a.id)?.joinedAt || 0) - (ctx.player(b.id)?.joinedAt || 0),
+    );
+  let rank = 0;
+  standings.forEach((row, i) => {
+    if (i === 0 || row.score !== standings[i - 1].score) rank = i + 1;
+    row.rank = rank;
+    row.tied = false;
+  });
+  for (const row of standings) row.tied = standings.filter((r) => r.rank === row.rank).length > 1;
   return {
+    standings,
     awards,
     mostWanted: s.mostWanted.slice(),
-    wordOfTheNight: wordOfTheNight ? { ...wordOfTheNight, blurb: `“${wordOfTheNight.word}”, smuggled by ${wordOfTheNight.name}, ${wordOfTheNight.votes} ${wordOfTheNight.votes === 1 ? 'vote' : 'votes'}, ${wordOfTheNight.outcome === 'busted' ? 'busted' : wordOfTheNight.outcome === 'fooled' ? 'fooled the room' : wordOfTheNight.outcome === 'seen' ? 'seen through' : 'got away'}.` } : null,
+    wordOfTheNight: wordOfTheNight
+      ? {
+          ...wordOfTheNight,
+          blurb: `“${wordOfTheNight.word}”, smuggled by ${wordOfTheNight.name}, ${wordOfTheNight.votes} ${wordOfTheNight.votes === 1 ? 'vote' : 'votes'}, ${wordOfTheNight.outcome === 'busted' ? 'busted' : wordOfTheNight.outcome === 'fooled' ? 'fooled the room' : wordOfTheNight.outcome === 'seen' ? 'seen through' : 'got away'}.`,
+        }
+      : null,
     topAnswer,
     finalePrompt: finale ? finale.text : null,
     rounds: state.rounds.length,
@@ -971,7 +1091,9 @@ function buildView(state, ctx, playerId, isTv) {
     range: null,
     tier: null,
     done: [],
-    afk: Object.entries(state.players).filter(([, p]) => p.afk).map(([id]) => id),
+    afk: Object.entries(state.players)
+      .filter(([, p]) => p.afk)
+      .map(([id]) => id),
     tappedAny: false,
     participants: cur ? cur.participants.filter((id) => !cur.left.has(id)) : [],
     you: null,
@@ -987,13 +1109,20 @@ function buildView(state, ctx, playerId, isTv) {
   const phase = state.phase;
   const afterWrite = ['vote', 'accuse', 'lineup', 'reveal', 'scoreboard'].includes(phase);
   const namesPublic = ['accuse', 'lineup', 'reveal', 'scoreboard'].includes(phase);
-  base.prompt = { text: cur.prompt.text, subjectId: cur.prompt.subjectId, callback: cur.prompt.callback ? { round: cur.prompt.callback.round, authorId: cur.prompt.callback.authorId } : null };
+  base.prompt = {
+    text: cur.prompt.text,
+    subjectId: cur.prompt.subjectId,
+    callback: cur.prompt.callback ? { round: cur.prompt.callback.round, authorId: cur.prompt.callback.authorId } : null,
+  };
   base.range = cur.range;
   base.tier = cur.tier;
   base.tappedAny = Object.keys(cur.wiretaps).length > 0;
   if (phase === 'write') base.done = cur.participants.filter((id) => cur.answers[id]);
   if (phase === 'vote') base.done = Object.keys(cur.votes);
-  if (phase === 'accuse') base.done = Object.entries(cur.accusations).filter(([, a]) => a.locked).map(([id]) => id);
+  if (phase === 'accuse')
+    base.done = Object.entries(cur.accusations)
+      .filter(([, a]) => a.locked)
+      .map(([id]) => id);
   if (phase === 'lineup') base.done = [...cur.lineupLocked];
   if (afterWrite) {
     base.answers = cur.order
@@ -1050,7 +1179,15 @@ function buildView(state, ctx, playerId, isTv) {
     draft: phase === 'write' ? cur.drafts[playerId] || '' : '',
     answer: cur.answers[playerId] ? { text: cur.answers[playerId].text, filler: cur.answers[playerId].filler } : null,
     wiretaps: me.wiretaps,
-    wiretap: cur.wiretaps[playerId] ? { targetId: cur.wiretaps[playerId], text: phase === 'write' ? cur.drafts[cur.wiretaps[playerId]] || cur.answers[cur.wiretaps[playerId]]?.text || '' : cur.answers[cur.wiretaps[playerId]]?.text || '' } : null,
+    wiretap: cur.wiretaps[playerId]
+      ? {
+          targetId: cur.wiretaps[playerId],
+          text:
+            phase === 'write'
+              ? cur.drafts[cur.wiretaps[playerId]] || cur.answers[cur.wiretaps[playerId]]?.text || ''
+              : cur.answers[cur.wiretaps[playerId]]?.text || '',
+        }
+      : null,
     tappedBy: (cur.tappedBy[playerId] || []).length,
     tappedByIds: revealOn ? cur.tappedBy[playerId] || [] : [],
     vote: cur.votes[playerId] !== undefined ? cur.order.indexOf(cur.votes[playerId]) : null,
