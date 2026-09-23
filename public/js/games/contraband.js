@@ -804,7 +804,9 @@ function renderScoreboard(h, v, api, { tv } = {}) {
       ? h(
           'div',
           { class: 'underdog' },
-          `🎧 ${sb.underdog.map((u) => nameOf(api, u.id)).join(' & ')} got an extra Wiretap for finishing last`,
+          sb.underdog.length > 3
+            ? `🎧 ${sb.underdog.length} players tied for last and each got an extra Wiretap`
+            : `🎧 ${sb.underdog.map((u) => nameOf(api, u.id)).join(' & ')} got an extra Wiretap for finishing last`,
         )
       : null,
     sb.mostWanted?.length
