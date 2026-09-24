@@ -14,6 +14,9 @@ before(async () => (srv = await startServer({ CONTRABAND_NO_AI: '1' })));
 after(async () => srv.stop());
 
 const gv = (c) => c.view?.game?.view;
+// the secret phase is very short in tests; the prompt is visible in both secret and answer
+const untilPrompt = (c, round) =>
+  c.untilView((v) => v.phase === 'playing' && ['secret', 'answer'].includes(v.game?.view?.phase) && v.game.view.round === round && !!v.game.view.you?.prompt, 8000);
 const untilPhase = (c, phase, ms = 8000) => c.untilView((v) => v.phase === 'playing' && v.game?.view?.phase === phase, ms);
 const untilRound = (c, phase, round, ms = 8000) =>
   c.untilView((v) => v.phase === 'playing' && v.game?.view?.phase === phase && v.game.view.round === round, ms);
@@ -124,7 +127,7 @@ test('Cardsmith: everyone-votes mode scores votes and never lets you vote for yo
 test('Imposter: secret prompts, answers, vote, guess, reveal, results', async () => {
   const { host, players } = await makeRoom(srv.url, ['Ana', 'Ben', 'Cy', 'Dee']);
   host.host('start', { settings: { gameId: 'imposter', rounds: 3 } });
-  await Promise.all(players.map((p) => untilPhase(p, 'secret')));
+  await Promise.all(players.map((p) => untilPrompt(p, 1)));
   const prompts = players.map((p) => gv(p).you.prompt);
   const counts = {};
   for (const t of prompts) counts[t] = (counts[t] || 0) + 1;
@@ -154,7 +157,7 @@ test('Imposter: secret prompts, answers, vote, guess, reveal, results', async ()
   assert.equal(r.deltas[imp.playerId], 150);
   for (const p of players) if (p !== imp) assert.equal(r.deltas[p.playerId], 100);
   // round 2: nobody votes for the imposter -> escape
-  await Promise.all(players.map((p) => untilRound(p, 'secret', 2)));
+  await Promise.all(players.map((p) => untilPrompt(p, 2)));
   const prompts2 = players.map((p) => gv(p).you.prompt);
   const c2 = {};
   for (const t of prompts2) c2[t] = (c2[t] || 0) + 1;
