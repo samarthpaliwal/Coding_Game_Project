@@ -1,7 +1,9 @@
 // Registry of playable games. Add a module here and it appears in the lobby.
 import contraband from './contraband.js';
+import cardsmith from './cardsmith.js';
+import imposter from './imposter.js';
 
-const GAMES = [contraband];
+const GAMES = [contraband, cardsmith, imposter];
 
 export function registerGame(module) {
   if (!module?.id || GAMES.some((g) => g.id === module.id)) return;

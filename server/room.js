@@ -1,7 +1,7 @@
 // Room = one group of friends. Holds the players, the current game, and the timer.
 // All game rules live in modules under ./games; the room only orchestrates them.
 
-import { randomCode, randomToken, nextId, nowMs } from './util.js';
+import { randomCode, randomToken, nextId, nowMs, cleanText } from './util.js';
 import { getGame, gameCatalog } from './games/index.js';
 import { RoomError } from './errors.js';
 
@@ -231,8 +231,10 @@ export class Room {
 
   updateSettings(patch) {
     if (patch.gameId !== undefined) {
-      if (!getGame(patch.gameId)) throw new RoomError('bad_game', 'Unknown game.');
-      this.settings.gameId = patch.gameId;
+      const next = getGame(patch.gameId);
+      if (!next) throw new RoomError('bad_game', 'Unknown game.');
+      // switching games resets the settings to that game's defaults
+      if (patch.gameId !== this.settings.gameId) this.settings = { gameId: patch.gameId, ...(next.defaultSettings || {}) };
     }
     const module = getGame(this.settings.gameId);
     if (module?.settingsSchema) {
@@ -247,6 +249,8 @@ export class Room {
           if (!def.options.some((o) => o.value === v)) continue;
         } else if (def.type === 'boolean') {
           v = !!v;
+        } else if (def.type === 'text') {
+          v = cleanText(String(v ?? ''), def.max || 40);
         }
         this.settings[key] = v;
       }

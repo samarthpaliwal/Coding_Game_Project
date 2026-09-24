@@ -5,15 +5,18 @@
   "description": "Contraband: a room-code party game. Sneak the word, steal the laugh, don't get caught. Phones only, no logins, no installs.",
   "type": "module",
   "main": "server/index.js",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node --test \"test/unit/*.test.js\"",
-    "test:e2e": "node test/e2e/smoke.mjs && node test/e2e/contraband.mjs && node test/e2e/stress10.mjs",
+    "test:e2e": "node test/e2e/smoke.mjs && node test/e2e/contraband.mjs && node test/e2e/stress10.mjs && node test/e2e/pack.mjs",
     "lint": "node --check server/index.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "ws": "^8.18.0"
   }
 }

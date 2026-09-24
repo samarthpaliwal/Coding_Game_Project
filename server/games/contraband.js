@@ -254,8 +254,18 @@ const contraband = {
   minPlayers: 3,
   maxPlayers: 12,
   minutes: 16,
-  defaultSettings: { rounds: 4, words: 'normal' },
+  defaultSettings: { mode: 'classic', rounds: 4, words: 'normal' },
   settingsSchema: {
+    mode: {
+      type: 'choice',
+      label: 'Mode',
+      default: 'classic',
+      options: [
+        { value: 'classic', label: 'Classic' },
+        { value: 'blitz', label: 'Blitz' },
+        { value: 'hardcore', label: 'Hardcore' },
+      ],
+    },
     rounds: { type: 'number', label: 'Rounds before the final', min: 3, max: 6, default: 4 },
     words: {
       type: 'choice',
@@ -272,7 +282,13 @@ const contraband = {
 
   init(ctx, settings) {
     banks(ctx);
+    // Modes are presets on top of the settings: Blitz is short and mild, Hardcore is long,
+    // spicy, and never tells you how many smugglers there are.
+    const mode = ['classic', 'blitz', 'hardcore'].includes(settings.mode) ? settings.mode : 'classic';
+    if (mode === 'blitz') settings = { ...settings, rounds: 3, words: 'mild' };
+    if (mode === 'hardcore') settings = { ...settings, rounds: 6, words: 'spicy' };
     const state = {
+      mode,
       phase: 'briefing',
       phaseId: 0,
       endsAt: null,
@@ -612,6 +628,11 @@ function beginRound(state, ctx, r) {
       state.players[id].timesSmuggled++;
     }
   }
+  if (state.mode === 'hardcore' && !state.isFinal) {
+    // hardcore never announces the exact count, even in round 1
+    const r2 = rangeFor(Math.max(2, r), ids.length);
+    cur.range = { lo: r2.lo, hi: r2.hi };
+  }
   enterPhase(state, ctx, {
     phase: 'briefing',
     seconds: state.isFinal ? T.BRIEF_FINAL_SECONDS : T.BRIEF_SECONDS,
@@ -619,8 +640,14 @@ function beginRound(state, ctx, r) {
   });
 }
 
+function writeSeconds(state) {
+  if (state.mode === 'blitz') return Math.max(10, Math.round(T.WRITE_SECONDS / 2));
+  if (state.mode === 'hardcore') return Math.max(10, Math.round(T.WRITE_SECONDS * 0.75));
+  return T.WRITE_SECONDS;
+}
+
 function enterWrite(state, ctx) {
-  enterPhase(state, ctx, { phase: 'write', seconds: T.WRITE_SECONDS, onEnd: () => closeWrite(state, ctx) });
+  enterPhase(state, ctx, { phase: 'write', seconds: writeSeconds(state), onEnd: () => closeWrite(state, ctx) });
 }
 
 function closeWrite(state, ctx) {
@@ -1112,6 +1139,7 @@ function buildView(state, ctx, playerId, isTv) {
     round: state.round,
     totalRounds: state.totalRounds,
     isFinal: state.isFinal,
+    mode: state.mode || 'classic',
     waiting: state.waiting,
     prompt: null,
     range: null,

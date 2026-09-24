@@ -97,7 +97,8 @@ export class TestClient {
   }
 }
 
-export async function startServer() {
+export async function startServer(env = {}) {
+  Object.assign(process.env, env);
   const { createApp } = await import('../../server/index.js');
   const app = createApp();
   await new Promise((r) => app.server.listen(0, '127.0.0.1', r));

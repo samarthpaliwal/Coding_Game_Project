@@ -26,7 +26,8 @@ after(async () => srv.stop());
 
 const gv = (c) => c.view?.game?.view;
 const untilPhase = (c, phase, ms = 8000) => c.untilView((v) => v.phase === 'playing' && v.game?.view?.phase === phase, ms);
-const untilRound = (c, round, ms = 12000) => c.untilView((v) => v.phase === 'playing' && v.game?.view?.round === round && v.game.view.phase === 'briefing', ms);
+const untilRound = (c, round, ms = 12000) =>
+  c.untilView((v) => v.phase === 'playing' && v.game?.view?.round === round && v.game.view.phase === 'briefing', ms);
 
 test('an idle player is marked AFK after two rounds and any message deals them back in', async () => {
   const { host, players } = await makeRoom(srv.url, ['Ana', 'Ben', 'Cy', 'Dee']);

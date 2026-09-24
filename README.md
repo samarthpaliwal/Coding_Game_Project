@@ -2,9 +2,15 @@
 
 **Sneak the word. Steal the laugh. Don't get caught.**
 
-A room-code party game for 3–12 people. Everyone plays on their own phone, nobody installs anything, nobody logs in. One person creates a room, everyone else types the four-letter code (or scans the QR), and the night starts.
+A room-code party pack for 3–12 people. Everyone plays on their own phone, nobody installs anything, nobody logs in. One person creates a room, everyone else types the four-letter code (or scans the QR), and the night starts. Tap the **?** on any screen for the rules of the game you are in.
 
-> Everyone answers the same ridiculous prompt. A secret few are **smugglers** whose answer must hide an assigned word. Vote for the funniest answer, then accuse the smugglers. Laughs and getaways both score.
+Three games share the room and the scoreboard:
+
+| Game | One line | Modes / settings |
+|---|---|---|
+| **Contraband** | Everyone answers the same ridiculous prompt. A secret few are **smugglers** whose answer must hide an assigned word. Vote for the funniest, then accuse the smugglers. | Classic · Blitz (30 s rounds, mild words) · Hardcore (spicy words, six rounds, the smuggler count is never announced) |
+| **Cardsmith** | A fill-in-the-blank card game where the room writes its own deck. The host types a theme, everyone writes their own answer cards (10 each with 3 players, down to 3 each with a full room), the server tops up the deck with AI-written cards on that theme, and a rotating judge crowns the funniest card each round. Your cards can win in other people's hands. | Theme · rounds · rotating judge or everyone votes |
+| **Imposter** | Everyone secretly gets the same short prompt, except one player who gets a slightly different one and does not know it. Answer in a word or two, then vote out whoever does not fit. A caught imposter can guess the crew's prompt to steal points. | Rounds |
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/samarthpaliwal/Coding_Game_Project)
 [![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/samarthpaliwal/Coding_Game_Project&branch=main&name=contraband&builder=dockerfile&ports=3000;http;/)
@@ -22,6 +28,10 @@ A room-code party game for 3–12 people. Everyone plays on their own phone, nob
 
 About 15 minutes at 6 players. Best with 5–8.
 
+## AI-written cards (optional)
+
+Cardsmith asks Claude to write extra prompt and answer cards on the room's theme when the server has an API key. Set `ANTHROPIC_API_KEY` in the environment (Render: *Environment* tab; locally: `ANTHROPIC_API_KEY=sk-... npm start`). Without a key the game uses its built-in bank of 80 prompt cards and 145 answer cards, and everything else works the same. Generation runs while players write their own cards, so it never slows the game down. Set `CONTRABAND_AI_MODEL` to change the model (default `claude-opus-5`).
+
 ## Run it locally
 
 ```bash
@@ -32,8 +42,8 @@ npm start          # http://localhost:3000
 Open the address on a phone on the same Wi-Fi (use your computer's LAN IP instead of localhost). Open `/tv` on a laptop or TV to mirror the room on a big screen.
 
 ```bash
-npm test           # unit tests: rules, scoring, secrecy leak test, full game over WebSockets
-npm run test:e2e   # headless Chromium: three phones + a TV play a whole game, screenshots in test/e2e/artifacts
+npm test           # unit tests: rules, scoring, secrecy leak test, full games over WebSockets
+npm run test:e2e   # headless Chromium: phones + a TV play every game, screenshots in test/e2e/artifacts
 ```
 
 ## Put it on the internet (free)
@@ -61,8 +71,11 @@ server/
   room.js             Rooms: 4-letter codes, seat tokens for refresh/reconnect, host migration,
                       spectators, one timer per room, coalesced per-player views, TV feeds
   games/contraband.js The rules: roles, word tiers, validation, scoring, awards, per-player secrecy
+  games/cardsmith.js  Theme, player-written cards, AI/bank top-up, hands, rotating judge or vote
+  games/imposter.js   Prompt pairs, one-word answers, vote, the imposter's guess
   games/phases.js     Timed phase helpers with early-advance when everyone is done
-  content/            340 prompts, 450 contraband words in three tiers, reveal stamps, fillers
+  ai.js               Optional card generation through the Anthropic SDK
+  content/            340 prompts, 450 contraband words, 170 imposter prompt pairs, 225 cards, stamps, fillers
 public/
   js/app.js           Phone app: home, lobby (QR + invite link), game screens, results podium
   js/games/contraband.js  Every phase screen for phones and TV, server-timed reveal choreography
@@ -79,7 +92,7 @@ Design decisions that matter:
 
 ## Adding another game
 
-The room layer is game-agnostic. A game is a module in `server/games/` exporting `{ id, name, minPlayers, maxPlayers, settingsSchema, init, start, action, view, tvView }`, registered in `server/games/index.js`, plus a renderer in `public/js/games/`. With more than one game registered, the lobby shows a game picker.
+The room layer is game-agnostic. A game is a module in `server/games/` exporting `{ id, name, minPlayers, maxPlayers, settingsSchema, init, start, action, view, tvView }`, registered in `server/games/index.js`, plus a renderer in `public/js/games/` exporting `{ rules, render, tv, renderSummary, renderHowTo }`. The lobby picker, settings controls, help overlay, scoreboard and podium come for free. Imposter is the smallest example (about 300 lines of server code).
 
 ## Credits
 

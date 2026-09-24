@@ -44,6 +44,7 @@ const state = {
   busy: false,
   urlCode: codeFromUrl(),
   showQr: false,
+  showHelp: false,
   codeDraft: '',
   attempt: 0,
   keep: new Map(), // persistent DOM nodes for game renderers (canvases etc.)
@@ -233,7 +234,7 @@ function doPaint() {
     return;
   }
   if (state.screen === 'home') {
-    render(root, renderHome());
+    render(root, renderHome(), state.showHelp ? renderHelp(null) : null);
     return;
   }
   if (!v) {
@@ -245,15 +246,16 @@ function doPaint() {
     state.keepScope = '';
     state.lastPhaseKey = '';
   }
+  const overlay = state.showHelp ? renderHelp(v) : null;
   if (v.phase === 'lobby') {
     document.body.dataset.phase = 'lobby';
-    render(root, renderLobby(v));
+    render(root, renderLobby(v), overlay);
   } else if (v.phase === 'results') {
     document.body.dataset.phase = 'results';
-    render(root, renderResults(v));
+    render(root, renderResults(v), overlay);
   } else {
     document.body.dataset.phase = 'playing';
-    render(root, renderPlaying(v));
+    render(root, renderPlaying(v), overlay);
   }
 }
 
@@ -273,7 +275,81 @@ function topBar(v, { center } = {}) {
       'div',
       { class: 'topbar-right' },
       h('span', { class: `net-dot ${online ? 'on' : 'off'}`, title: online ? 'Connected' : 'Reconnecting…' }),
+      h('button', { class: 'help-btn', title: 'How to play', 'aria-label': 'How to play', onClick: () => openHelp() }, '?'),
       h('span', { class: 'me-avatar', title: v.you?.name }, v.you?.avatar || ''),
+    ),
+  );
+}
+
+// ---------- HELP OVERLAY ----------
+
+function openHelp() {
+  state.showHelp = true;
+  paint();
+}
+function closeHelp() {
+  state.showHelp = false;
+  paint();
+}
+
+function currentRules(v) {
+  const gameId = v?.game?.id || v?.settings?.gameId || v?.catalog?.[0]?.id || 'contraband';
+  return { id: gameId, rules: GAME_RENDERERS[gameId]?.rules || null };
+}
+
+function renderHelp(v) {
+  const { rules } = currentRules(v);
+  const gameName = v?.catalog?.find((g) => g.id === currentRules(v).id)?.name || rules?.name || 'Contraband';
+  const section = (title, items, cls) =>
+    items?.length
+      ? h(
+          'section',
+          { class: `help-section ${cls || ''}` },
+          h('h3', null, title),
+          h(
+            'ul',
+            { class: 'help-list' },
+            items.map((t) => h('li', null, typeof t === 'string' ? t : [h('b', null, t.title + ' '), t.text])),
+          ),
+        )
+      : null;
+  return h(
+    'div',
+    {
+      class: 'help-overlay',
+      role: 'dialog',
+      'aria-modal': 'true',
+      onClick: (e) => e.target.classList.contains('help-overlay') && closeHelp(),
+    },
+    h(
+      'div',
+      { class: 'help-panel' },
+      h(
+        'div',
+        { class: 'help-head' },
+        h('div', null, h('div', { class: 'eyebrow' }, 'How to play'), h('h2', null, gameName)),
+        h('button', { class: 'btn small ghost', onClick: closeHelp }, 'Close'),
+      ),
+      rules
+        ? h('p', { class: 'help-summary' }, rules.summary)
+        : h('p', { class: 'muted' }, 'Follow the prompts on your phone. The host starts each game.'),
+      section('The round', rules?.steps, 'steps'),
+      section('Scoring', rules?.scoring),
+      section('Tips', rules?.tips),
+      h(
+        'section',
+        { class: 'help-section' },
+        h('h3', null, 'The room'),
+        h(
+          'ul',
+          { class: 'help-list' },
+          h('li', null, 'Everyone plays on their own phone. Share the 4-letter code or the QR to invite people.'),
+          h('li', null, 'Refreshing or losing signal keeps your seat: reopen the link and you are back.'),
+          h('li', null, 'The host picks the game and settings, can skip a stuck phase, and can end a game early.'),
+          h('li', null, 'Open /tv on a laptop or TV, type the code, and it mirrors the room on the big screen.'),
+        ),
+      ),
+      h('button', { class: 'btn big primary', onClick: closeHelp }, 'Got it'),
     ),
   );
 }
@@ -463,7 +539,14 @@ function renderHome() {
         state.busy ? 'Connecting…' : 'Create a new room',
       ),
     ),
-    h('p', { class: 'foot muted' }, 'Got a TV? Open ', h('a', { href: '/tv' }, '/tv'), ' on it and type the code.'),
+    h(
+      'p',
+      { class: 'foot muted' },
+      h('button', { class: 'linkish', onClick: () => openHelp() }, 'How to play'),
+      ' · Got a TV? Open ',
+      h('a', { href: '/tv' }, '/tv'),
+      ' on it and type the code.',
+    ),
   );
 }
 
@@ -528,7 +611,6 @@ function renderLobby(v) {
       'section',
       { class: 'game-pick' },
       v.catalog.length > 1 ? h('h3', null, me.isHost ? 'Pick a game' : 'Game') : null,
-      v.catalog.length === 1 && GAME_RENDERERS[game?.id]?.renderHowTo ? GAME_RENDERERS[game.id].renderHowTo(v, api()) : null,
       v.catalog.length === 1
         ? null
         : h(
@@ -549,6 +631,8 @@ function renderLobby(v) {
             ),
           ),
       game && Object.keys(game.settingsSchema || {}).length ? renderSettings(v, game) : null,
+      GAME_RENDERERS[game?.id]?.renderHowTo ? GAME_RENDERERS[game.id].renderHowTo(v, api()) : null,
+      h('button', { class: 'btn ghost small block', onClick: () => openHelp() }, 'Full rules & scoring'),
     ),
     h(
       'section',
@@ -623,6 +707,18 @@ function renderSettings(v, game) {
           ),
         ),
       );
+    } else if (def.type === 'text') {
+      control = h('input', {
+        id: `setting-${key}`,
+        type: 'text',
+        class: 'setting-text',
+        maxlength: String(def.max || 40),
+        placeholder: def.placeholder || '',
+        value: value || '',
+        disabled: !a.isHost,
+        onChange: (e) => a.host('settings', { settings: { [key]: e.target.value } }),
+        onKeydown: (e) => e.key === 'Enter' && e.target.blur(),
+      });
     } else if (def.type === 'boolean') {
       control = h(
         'button',

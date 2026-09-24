@@ -983,7 +983,7 @@ function renderHowTo(view, api) {
       h('li', null, 'A secret few are smugglers: their answer must hide an assigned word.'),
       h('li', null, 'Vote for the funniest answer, then accuse the smugglers. Laughs and getaways both score.'),
     ),
-    h('p', { class: 'muted small' }, 'Best with 5–8 players · about 15 minutes'),
+    h('p', { class: 'muted small' }, 'Best with 5\u20138 players \u00b7 about 15 minutes'),
   );
 }
 
@@ -1046,7 +1046,51 @@ function renderSummary(results, api) {
   );
 }
 
+const rules = {
+  name: 'Contraband',
+  summary:
+    'Everyone answers the same ridiculous prompt. A secret few are smugglers who must sneak an assigned word into their answer. Vote for the funniest, then accuse the smugglers. Laughs and getaways both score.',
+  steps: [
+    {
+      title: 'Brief.',
+      text: 'Your phone flips a card: CLEAN, or SMUGGLER with your contraband word. Round 1 says exactly how many smugglers there are; later rounds only give a range, and sometimes there are none.',
+    },
+    {
+      title: 'Write (60 s).',
+      text: 'Answer the prompt in up to 70 characters. Smugglers cannot submit until their word is in the answer, so make it sound natural.',
+    },
+    { title: 'Wiretap.', text: 'Spend a token to watch one player type live. They see SOMEONE IS TAPPING YOUR LINE but never who.' },
+    { title: 'Vote.', text: 'Answers appear without names. Tap the funniest one. If the prompt was about you, your vote counts double.' },
+    {
+      title: 'Accuse.',
+      text: 'Names appear. Tap up to N suspects, or NOBODY when the range allows it, then lock in. Heat bars show where suspicion is piling up.',
+    },
+    {
+      title: 'Reveal.',
+      text: 'Cards flip in sync on every phone. Smugglers are stamped BUSTED or GOT AWAY and their word lights up inside the answer.',
+    },
+    {
+      title: 'Final round.',
+      text: 'The prompt is built from the night\u2019s funniest answer and everyone is a smuggler. Guess which word each friend hid; fool them with yours.',
+    },
+  ],
+  scoring: [
+    '+100 per vote your answer receives (+200 in the final).',
+    '+250 for a smuggler who gets away, +350 if nobody suspected you at all. Busted smugglers keep their laugh points.',
+    '+100 per correct accusation, \u221250 per wrong one (never below 0), +100 bonus and a wiretap token for catching every smuggler.',
+    '+200 for calling NOBODY on a round with no smugglers.',
+    'Final: +100 per word you guess right, +100 for each person your word fooled.',
+    'Last place gets a fresh wiretap token every round.',
+  ],
+  tips: [
+    'A weird answer from an innocent is a great decoy.',
+    'Wrong accusations cost 50. Confidence costs nothing.',
+    'Smugglers: hide the word in the setup, not the punchline.',
+  ],
+};
+
 const renderer = {
+  rules,
   render(view, api) {
     const h = api.h;
     const v = view.game.view;
