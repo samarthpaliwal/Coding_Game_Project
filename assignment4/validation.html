@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assignment 4 - Form Validation</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --primary: #2f5bea;
+      --primary-dark: #1e43b8;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --error: #d93025;
+      --success: #188038;
+      --border: #d1d5db;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 18px 24px;
+    }
+    header h1 { margin: 0 0 8px 0; font-size: 22px; }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      margin-right: 16px;
+      font-size: 14px;
+      opacity: 0.85;
+    }
+    nav a.active, nav a:hover { opacity: 1; text-decoration: underline; }
+    main {
+      max-width: 520px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    h2 { margin-top: 0; }
+    label { display: block; font-weight: 600; margin: 14px 0 6px; }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+    button {
+      margin-top: 18px;
+      padding: 10px 20px;
+      font-size: 15px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: var(--primary-dark); }
+    .error { color: var(--error); font-weight: 600; margin-top: 16px; white-space: pre-line; }
+    .hint { color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Assignment 4</h1>
+    <nav>
+      <a href="validation.html" class="active">Validation</a>
+      <a href="sort.html">Sort</a>
+      <a href="counter.html">Word Counter</a>
+      <a href="guess.html">Guessing Game</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Simple Form with Validation</h2>
+      <p class="hint">Fill in every field and click Validate.</p>
+
+      <form id="my_form" onsubmit="return false;">
+        <label for="name">Name</label>
+        <input type="text" id="name" placeholder="Your name">
+
+        <label for="email">Email</label>
+        <input type="text" id="email" placeholder="you@example.com"
+               pattern="[^@]+@[^@]+\.[^@]+">
+
+        <label for="age">Age</label>
+        <input type="number" id="age" placeholder="18+">
+
+        <button type="button" onclick="validateForm()">Validate</button>
+      </form>
+
+      <p id="my_p" class="error"></p>
+    </div>
+  </main>
+
+  <script>
+    function validateForm() {
+      var name = document.getElementById("name").value.trim();
+      var email = document.getElementById("email").value.trim();
+      var ageText = document.getElementById("age").value.trim();
+      var errors = [];
+
+      // Name must not be empty
+      if (name === "") {
+        errors.push("Name cannot be empty.");
+      }
+
+      // Email must contain exactly one "@" and a "." somewhere after the "@"
+      var atCount = email.split("@").length - 1;
+      var atIndex = email.indexOf("@");
+      if (atCount !== 1) {
+        errors.push("Email must contain exactly one \"@\".");
+      } else if (email.indexOf(".", atIndex) === -1) {
+        errors.push("Email must contain a \".\" after the \"@\".");
+      } else if (atIndex === 0 || email.indexOf(".", atIndex) === atIndex + 1 || email.endsWith(".")) {
+        errors.push("Email is not a valid address.");
+      }
+
+      // Age must be a number above 18
+      var age = Number(ageText);
+      if (ageText === "" || isNaN(age)) {
+        errors.push("Age must be a number.");
+      } else if (age <= 18) {
+        errors.push("Age must be above 18.");
+      }
+
+      var my_p = document.getElementById("my_p");
+      if (errors.length === 0) {
+        my_p.innerText = "";
+        alert("Form is valid!");
+      } else {
+        my_p.innerText = errors.join("\n");
+      }
+    }
+  </script>
+</body>
+</html>

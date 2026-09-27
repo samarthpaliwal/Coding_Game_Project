@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assignment 4 - Number Guessing Game</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --primary: #2f5bea;
+      --primary-dark: #1e43b8;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --error: #d93025;
+      --success: #188038;
+      --border: #d1d5db;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 18px 24px;
+    }
+    header h1 { margin: 0 0 8px 0; font-size: 22px; }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      margin-right: 16px;
+      font-size: 14px;
+      opacity: 0.85;
+    }
+    nav a.active, nav a:hover { opacity: 1; text-decoration: underline; }
+    main {
+      max-width: 520px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    h2 { margin-top: 0; }
+    label { display: block; font-weight: 600; margin: 14px 0 6px; }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+    button {
+      margin-top: 18px;
+      padding: 10px 20px;
+      font-size: 15px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: var(--primary-dark); }
+    .error { color: var(--error); font-weight: 600; margin-top: 16px; white-space: pre-line; }
+    .hint { color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Assignment 4</h1>
+    <nav>
+      <a href="validation.html">Validation</a>
+      <a href="sort.html">Sort</a>
+      <a href="counter.html">Word Counter</a>
+      <a href="guess.html" class="active">Guessing Game</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Number Guessing Game</h2>
+      <p class="hint">The computer picks a random integer between 1 and 100. Guess it using the prompts. You will be told "Too High", "Too Low", or "Correct!".</p>
+
+      <button type="button" onclick="playGame()">Play</button>
+
+      <p id="my_p" style="white-space: pre-line; font-weight: 600;"></p>
+    </div>
+  </main>
+
+  <script>
+    function playGame() {
+      // Random number is generated only once per game
+      var secret = Math.floor(Math.random() * 100) + 1;
+      var attempts = 0;
+      var my_p = document.getElementById("my_p");
+      my_p.innerText = "";
+
+      while (true) {
+        var input = window.prompt("Guess a number between 1 and 100:");
+        if (input === null) {
+          my_p.innerText = "Game cancelled after " + attempts + " attempt(s). The number was " + secret + ".";
+          return;
+        }
+
+        var guess = Number(input.trim());
+        if (input.trim() === "" || isNaN(guess) || guess < 1 || guess > 100 || guess !== Math.floor(guess)) {
+          alert("Please enter a whole number between 1 and 100.");
+          continue;
+        }
+
+        attempts++;
+
+        if (guess > secret) {
+          alert("Too High");
+        } else if (guess < secret) {
+          alert("Too Low");
+        } else {
+          alert("Correct!");
+          break;
+        }
+      }
+
+      my_p.innerText = "Correct! The number was " + secret + ".\nIt took you " + attempts + " attempt(s) to guess it.";
+    }
+
+    // Start a game as soon as the page loads
+    window.onload = playGame;
+  </script>
+</body>
+</html>
