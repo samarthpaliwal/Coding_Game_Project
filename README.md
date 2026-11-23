@@ -60,7 +60,7 @@ Design notes: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Quick start
 
-Requires Node.js 20 or newer.
+Requires Node.js 20 or newer to run the server, and 22 or newer to run the tests (`npm test` uses a glob that `node --test` only expands from Node 21).
 
 ```bash
 git clone https://github.com/samarthpaliwal/Coding_Game_Project.git
