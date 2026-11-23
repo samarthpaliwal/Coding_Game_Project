@@ -1,13 +1,84 @@
-# CONTRABAND
+# Contraband
 
-**Sneak the word. Steal the laugh. Don't get caught.**
+A room-code party game for 3 to 12 phones: sneak the word, steal the laugh, don't get caught.
 
-A room-code party game for 3–12 people. Everyone plays on their own phone, nobody installs anything, nobody logs in. One person creates a room, everyone else types the four-letter code (or scans the QR), and the night starts.
+[![CI](https://github.com/samarthpaliwal/Coding_Game_Project/actions/workflows/ci.yml/badge.svg)](https://github.com/samarthpaliwal/Coding_Game_Project/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+![Node 20+](https://img.shields.io/badge/node-20%2B-339933?logo=nodedotjs&logoColor=white)
 
-> Everyone answers the same ridiculous prompt. A secret few are **smugglers** whose answer must hide an assigned word. Vote for the funniest answer, then accuse the smugglers. Laughs and getaways both score.
+<p align="center">
+  <img src="docs/home.png" width="320" alt="The Contraband home screen on a phone: name, avatar picker, room code, create a new room">
+</p>
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/samarthpaliwal/Coding_Game_Project)
-[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/samarthpaliwal/Coding_Game_Project&branch=main&name=contraband&builder=dockerfile&ports=3000;http;/)
+> Everyone answers the same ridiculous prompt. A secret few are **smugglers** whose answer must hide an
+> assigned word. Vote for the funniest answer, then accuse the smugglers. Laughs and getaways both score.
+
+Everyone plays on their own phone. Nobody installs anything and nobody logs in: one person creates a room,
+everyone else types the four-letter code or scans the QR.
+
+## Problem
+
+Phone party games break in three ways players notice. A refresh or a locked screen throws someone out of
+the game. A secret meant for one player reaches another phone, where anyone curious can find it. And the
+big reveal lands a beat apart on each screen, so the room never reacts together.
+
+## Approach
+
+```mermaid
+flowchart LR
+    p1(["Phone"]) -->|"intents: submit · vote · accuse"| ws
+    p2(["Phone"]) --> ws
+    tv(["TV /tv"]) --> ws
+    subgraph server ["Node server (the only authority)"]
+        ws["WebSocket endpoint<br/>routing · heartbeat"] --> room["Room<br/>4-letter code · seat tokens<br/>host migration · one timer"]
+        room --> game["Game module<br/>roles · validation · scoring"]
+        game --> view["Per-player view<br/>only what that player may know"]
+    end
+    view -->|"state + endsAt"| p1
+    view --> p2
+    view -->|TV feed| tv
+```
+
+- **The server is the only authority.** Phones send intents (`submit`, `vote`, `accuse`, `lock`, `guess`,
+  `wiretap`); the server validates and sends each player a view containing only what that player may know.
+  Roles, words, drafts and votes never reach other phones before the reveal, and a unit test asserts it.
+- **Refresh-proof seats.** A seat token in `localStorage` re-attaches a player to the same seat with their
+  draft, role, vote and wiretap intact. Disconnected players never block a phase; missed inputs get fillers.
+- **Timers live on the server.** Clients render countdowns from `endsAt` using a clock offset measured with
+  a ping burst, so reveal flips land on every screen in the same beat.
+- **No build step, no framework, one dependency** (`ws`). It deploys anywhere Node runs.
+
+Design notes: [docs/DESIGN.md](docs/DESIGN.md).
+
+## Results
+
+- 27 unit tests pass (`npm test`): rules, scoring, the secrecy leak test, room hardening (seat recovery,
+  host commands, the 12-player cap) and full games played over real WebSockets.
+- An end-to-end suite drives three phones and a TV through a whole game in headless Chromium, plus a
+  ten-phone layout and refresh test.
+- 340 prompts and 450 contraband words in three tiers. A game takes about 15 minutes with 6 players.
+
+## Quick start
+
+Requires Node.js 20 or newer.
+
+```bash
+git clone https://github.com/samarthpaliwal/Coding_Game_Project.git
+cd Coding_Game_Project
+npm install
+npm start
+```
+
+Open http://localhost:3000. To play, open the same address on phones on the same Wi-Fi using your
+computer's LAN IP instead of `localhost`, and open `/tv` on a laptop or TV to mirror the room.
+
+```bash
+npm test
+```
+
+The end-to-end tests (`npm run test:e2e`) need Playwright with Chromium, and currently import it from a
+fixed path (`/opt/node22/lib/node_modules/playwright`, see `test/e2e/lib.js`), so they only run where
+Playwright is installed there. Screenshots go to `test/e2e/artifacts/`.
 
 ## How a night goes
 
@@ -22,25 +93,14 @@ A room-code party game for 3–12 people. Everyone plays on their own phone, nob
 
 About 15 minutes at 6 players. Best with 5–8.
 
-## Run it locally
+## Deploy
 
-```bash
-npm install
-npm start          # http://localhost:3000
-```
-
-Open the address on a phone on the same Wi-Fi (use your computer's LAN IP instead of localhost). Open `/tv` on a laptop or TV to mirror the room on a big screen.
-
-```bash
-npm test           # unit tests: rules, scoring, secrecy leak test, full game over WebSockets
-npm run test:e2e   # headless Chromium: three phones + a TV play a whole game, screenshots in test/e2e/artifacts
-```
-
-## Put it on the internet (free)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/samarthpaliwal/Coding_Game_Project)
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/samarthpaliwal/Coding_Game_Project&branch=main&name=contraband&builder=dockerfile&ports=3000;http;/)
 
 Any host that runs a Node server with WebSockets works. Memory is the only state, so a redeploy ends live rooms (fine for a party game; say so to your friends).
 
-**Render** (free plan, sleeps when idle, wakes in ~30 s): click the *Deploy to Render* button above, sign in with GitHub, accept the blueprint in `render.yaml`. Your URL will be `https://contraband-xxxx.onrender.com`.
+**Render** (free plan, sleeps when idle, wakes in ~30 s): click the *Deploy to Render* button below, sign in with GitHub, accept the blueprint in `render.yaml`. Your URL will be `https://contraband-xxxx.onrender.com`.
 
 **Koyeb** (free plan): click *Deploy to Koyeb*. It builds the `Dockerfile` and exposes port 3000.
 
@@ -53,29 +113,29 @@ docker run -p 3000:3000 contraband
 
 The server reads `PORT` from the environment and answers `GET /healthz` for health checks.
 
-## How it works
+## Tech stack
+
+Node.js, WebSockets (`ws`), vanilla JavaScript, HTML and CSS, Docker. Tests use the Node test runner and Playwright.
+
+## Project structure
 
 ```
 server/
-  index.js            HTTP static server + WebSocket endpoint, message routing, heartbeat
-  room.js             Rooms: 4-letter codes, seat tokens for refresh/reconnect, host migration,
-                      spectators, one timer per room, coalesced per-player views, TV feeds
-  games/contraband.js The rules: roles, word tiers, validation, scoring, awards, per-player secrecy
-  games/phases.js     Timed phase helpers with early-advance when everyone is done
-  content/            340 prompts, 450 contraband words in three tiers, reveal stamps, fillers
+  index.js              HTTP static server, WebSocket endpoint, message routing, heartbeat
+  room.js               rooms, seat tokens, host migration, spectators, timers, per-player views, TV feeds
+  games/contraband.js   the rules: roles, word tiers, validation, scoring, awards, secrecy
+  games/phases.js       timed phases with early advance when everyone is done
+  content/              prompts, contraband words in three tiers, reveal stamps, fillers
 public/
-  js/app.js           Phone app: home, lobby (QR + invite link), game screens, results podium
-  js/games/contraband.js  Every phase screen for phones and TV, server-timed reveal choreography
-  js/net.js           WebSocket with auto-reconnect and a clock-offset estimate (ping burst)
-  js/tv.js            Big-screen page: code + QR, roll call, heat grid, podium
+  js/app.js             phone app: home, lobby (QR and invite link), game screens, podium
+  js/games/contraband.js  every phase screen for phones and TV, server-timed reveal choreography
+  js/net.js             WebSocket with auto-reconnect and a clock-offset estimate
+  js/tv.js              big-screen page: code and QR, roll call, heat grid, podium
+test/
+  unit/                 rules, room and hardening tests (Node test runner)
+  e2e/                  headless Chromium games
+docs/                   design notes and screenshots
 ```
-
-Design decisions that matter:
-
-- **The server is the only authority.** Phones send intents (`submit`, `vote`, `accuse`, `lock`, `guess`, `wiretap`); the server validates and broadcasts each player a view that contains only what that player may know. Roles, words, drafts and votes never reach other phones before the reveal; a unit test asserts it.
-- **Refresh-proof.** A seat token in `localStorage` re-attaches you to the same seat with your draft, role, vote and wiretap intact. Disconnected players never block a phase; missed inputs get fillers.
-- **Timers live on the server.** Clients only render a countdown from `endsAt` using a clock offset measured with a ping burst, so the reveal flips land on every screen in the same beat.
-- **No build step, no framework, one dependency** (`ws`). Deploy anywhere Node runs.
 
 ## Adding another game
 
